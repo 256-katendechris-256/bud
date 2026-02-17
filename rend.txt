@@ -36,3 +36,7 @@ Notes:
 1. Replace ALLOWED_HOSTS and FRONTEND_URL with your actual Render URL.
 2. Your EMAIL_HOST_PASSWORD currently includes spaces. Keep it exactly as shown or re-generate app password.
 3. If you keep DEFAULT_FROM_EMAIL=BUD, some providers may flag sender identity. Using your Gmail address is safer.
+
+Render service commands:
+- Build Command: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
+- Start Command: gunicorn config.wsgi:application
