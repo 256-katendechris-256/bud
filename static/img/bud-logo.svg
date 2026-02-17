@@ -1,0 +1,34 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bud logo">
+  <defs>
+    <linearGradient id="leafGradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#cde85a"/>
+      <stop offset="100%" stop-color="#4f9a33"/>
+    </linearGradient>
+    <linearGradient id="bookGradient" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#95c93d"/>
+      <stop offset="100%" stop-color="#2f7a2e"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="45%" r="50%">
+      <stop offset="0%" stop-color="#f7f2b7" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#f7f2b7" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <ellipse cx="256" cy="250" rx="190" ry="185" fill="url(#glow)" />
+
+  <path d="M256 330 C220 315 178 302 128 298 C82 294 46 306 30 322 C72 326 118 350 158 380 C198 408 230 432 248 456 C250 406 252 366 256 330 Z" fill="url(#leafGradient)" stroke="#346a27" stroke-width="5" />
+  <path d="M256 330 C292 315 334 302 384 298 C430 294 466 306 482 322 C440 326 394 350 354 380 C314 408 282 432 264 456 C262 406 260 366 256 330 Z" fill="url(#leafGradient)" stroke="#346a27" stroke-width="5" />
+
+  <rect x="238" y="168" width="36" height="202" rx="16" fill="url(#bookGradient)" stroke="#2b5e23" stroke-width="5" />
+
+  <path d="M172 120 C198 104 228 96 256 96 C284 96 314 104 340 120 V256 C314 242 284 236 256 236 C228 236 198 242 172 256 Z" fill="url(#bookGradient)" stroke="#2b5e23" stroke-width="6" />
+  <path d="M256 96 C284 96 314 104 340 120 V256 C314 242 284 236 256 236 Z" fill="#75b138" stroke="#2b5e23" stroke-width="4" />
+  <path d="M172 120 C198 104 228 96 256 96 V236 C228 236 198 242 172 256 Z" fill="#84c044" stroke="#2b5e23" stroke-width="4" />
+
+  <path d="M194 124 C220 112 238 108 254 108" stroke="#f3f0cb" stroke-width="6" stroke-linecap="round" />
+  <path d="M258 108 C274 108 292 112 318 124" stroke="#f3f0cb" stroke-width="6" stroke-linecap="round" />
+  <path d="M194 136 C220 124 238 120 254 120" stroke="#f3f0cb" stroke-width="5" stroke-linecap="round" />
+  <path d="M258 120 C274 120 292 124 318 136" stroke="#f3f0cb" stroke-width="5" stroke-linecap="round" />
+
+  <path d="M256 330 C256 364 252 398 250 456" stroke="#346a27" stroke-width="8" stroke-linecap="round" />
+</svg>

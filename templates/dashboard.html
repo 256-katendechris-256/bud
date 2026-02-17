@@ -1,0 +1,44 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bud | Dashboard</title>
+  <link rel="icon" type="image/png" href="{% static 'img/bud.png' %}" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{% static 'css/app.css' %}" />
+</head>
+<body>
+  <div class="noise"></div>
+
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">
+          <img src="{% static 'img/bud.png' %}" alt="Bud app icon" />
+        </div>
+        <div>
+          <p class="brand-label">Bud Platform</p>
+          <h1>Dashboard</h1>
+        </div>
+      </div>
+      <button id="logout" class="secondary" type="button">Logout</button>
+    </header>
+
+    <section class="layout single">
+      <section class="card">
+        <div class="card-head">
+          <h2>Approved User Profile</h2>
+          <p class="muted">This page is only for verified and active users.</p>
+        </div>
+        <pre id="profile-json" class="json-output">Loading profile...</pre>
+      </section>
+    </section>
+  </main>
+
+  <script src="{% static 'js/dashboard.js' %}"></script>
+</body>
+</html>
