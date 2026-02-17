@@ -1,0 +1,38 @@
+Render Environment Variables (copy into Render -> Service -> Environment)
+
+# Required Django setting module
+DJANGO_SETTINGS_MODULE=config.settings.production
+
+# Hostname for your Render app (replace with your actual Render domain)
+ALLOWED_HOSTS=your-app-name.onrender.com
+
+# Database (Supabase/Postgres)
+SUPABASE_DB_NAME=postgres
+SUPABASE_DB_USER=postgres
+SUPABASE_DB_PASSWORD=W/7?e3.K9VfkLSL
+SUPABASE_DB_HOST=db.utkvhfuizaacjgzngggm.supabase.co
+SUPABASE_DB_PORT=5432
+
+# Redis cache (Upstash)
+REDIS_URL=rediss://default:AZuOAAIncDI5MjY0ZjAyNzFiZWE0YWJhYTg3OWI2OTBjOGJmNGQ3NnAyMzk4MjI@vocal-panther-39822.upstash.io:6379
+
+# Email verification (SMTP)
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_USE_SSL=False
+EMAIL_HOST_USER=hamzakatende51@gmail.com
+EMAIL_HOST_PASSWORD=jcql nfli eabg juzo
+DEFAULT_FROM_EMAIL=BUD
+
+# Frontend URL used in verification link (set to your Render URL in production)
+FRONTEND_URL=https://your-app-name.onrender.com
+
+# Django secret key (current project value)
+SECRET_KEY=django-insecure-&*yun%snvraf-2%#kf_f9jyfj&*p&q8bnujqxh#8@j2u7b+%=j
+
+Notes:
+1. Replace ALLOWED_HOSTS and FRONTEND_URL with your actual Render URL.
+2. Your EMAIL_HOST_PASSWORD currently includes spaces. Keep it exactly as shown or re-generate app password.
+3. If you keep DEFAULT_FROM_EMAIL=BUD, some providers may flag sender identity. Using your Gmail address is safer.
