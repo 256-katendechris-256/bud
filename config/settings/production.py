@@ -7,7 +7,7 @@ environ.Env.read_env(BASE_DIR / '.env')
 
 DEBUG = False
 
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['.vercel.app', 'localhost', '127.0.0.1'])
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -39,6 +39,9 @@ DATABASES = {
         'PASSWORD': env('SUPABASE_DB_PASSWORD'),
         'HOST': env('SUPABASE_DB_HOST'),
         'PORT': env('SUPABASE_DB_PORT'),
+        'OPTIONS': {
+            'sslmode': env('DB_SSLMODE', default='require'),
+        },
     }
 }
 
