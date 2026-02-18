@@ -40,3 +40,41 @@ Notes:
 Render service commands:
 - Build Command: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
 - Start Command: gunicorn config.wsgi:application
+
+Vercel Environment Variables (copy into Vercel -> Project -> Settings -> Environment Variables)
+
+# Required Django setting module
+DJANGO_SETTINGS_MODULE=config.settings.production
+
+# Hosts / app URL
+ALLOWED_HOSTS=.vercel.app,bud-ruby.vercel.app
+FRONTEND_URL=https://bud-ruby.vercel.app
+
+# Django secret key
+SECRET_KEY=django-insecure-&*yun%snvraf-2%#kf_f9jyfj&*p&q8bnujqxh#8@j2u7b+%=j
+
+# Database SSL
+DB_SSLMODE=require
+
+# Database option A (recommended): single URL
+# DATABASE_URL=postgresql://<user>:<password>@<host>:<port>/<db_name>
+
+# Database option B: split Supabase variables
+SUPABASE_DB_NAME=postgres
+SUPABASE_DB_USER=postgres
+SUPABASE_DB_PASSWORD=W/7?e3.K9VfkLSL
+SUPABASE_DB_HOST=db.utkvhfuizaacjgzngggm.supabase.co
+SUPABASE_DB_PORT=5432
+
+# Optional cache
+REDIS_URL=rediss://default:AZuOAAIncDI5MjY0ZjAyNzFiZWE0YWJhYTg3OWI2OTBjOGJmNGQ3NnAyMzk4MjI@vocal-panther-39822.upstash.io:6379
+
+# Email verification (SMTP)
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_USE_SSL=False
+EMAIL_HOST_USER=hamzakatende51@gmail.com
+EMAIL_HOST_PASSWORD=jcql nfli eabg juzo
+DEFAULT_FROM_EMAIL=BUD
