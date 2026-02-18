@@ -35,11 +35,25 @@ function wirePasswordToggles() {
 async function request(path, options = {}) {
   const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
   const response = await fetch(path, { ...options, headers });
-  const data = await response.json().catch(() => ({}));
+
+  const text = await response.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(`Server error (${response.status}). Please try again.`);
+  }
 
   if (!response.ok) {
-    const detail = data.detail || data.error || JSON.stringify(data);
-    throw new Error(detail || `Request failed (${response.status})`);
+    // DRF validation errors can be nested: {"field": ["msg"]}
+    const detail =
+      data.detail ||
+      data.error ||
+      Object.values(data)
+        .flat()
+        .join(". ") ||
+      `Request failed (${response.status})`;
+    throw new Error(detail);
   }
 
   return data;
