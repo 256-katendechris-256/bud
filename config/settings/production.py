@@ -4,9 +4,16 @@ from pathlib import Path
 from .base import *
 
 env = environ.Env()
-environ.Env.read_env(BASE_DIR / '.env')
+
+# Read .env file if it exists (won't exist on Vercel — use env vars there)
+_env_file = BASE_DIR / '.env'
+if _env_file.is_file():
+    environ.Env.read_env(_env_file)
 
 DEBUG = False
+
+# SECRET_KEY must be set via environment variable in production
+SECRET_KEY = env('SECRET_KEY', default=SECRET_KEY)
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['.vercel.app', 'localhost', '127.0.0.1'])
 
@@ -30,10 +37,10 @@ STORAGES = {
         'BACKEND': 'django.core.files.storage.FileSystemStorage',
     },
     'staticfiles': {
-        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+        'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
     },
 }
-WHITENOISE_MANIFEST_STRICT = False
+WHITENOISE_USE_FINDERS = True
 
 _database_url = env('DATABASE_URL', default='')
 if _database_url:
