@@ -10,51 +10,64 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="{% static 'css/app.css' %}" />
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
   <div class="noise"></div>
 
   <main class="auth-shell">
-    <section class="auth-card card">
-      <a class="back-link" href="{% url 'landing' %}">Back to Home</a>
-      <div class="auth-title">
-        <img src="{% static 'img/bud.png' %}" alt="Bud app icon" />
-        <h1>Log In</h1>
-      </div>
-      <p class="muted">Use your verified email account.</p>
+    <!-- Left brand panel (hidden on mobile) -->
+    <div class="auth-brand-panel">
+      <img src="{% static 'img/bud.png' %}" alt="Bud" />
+      <h2>Welcome back, reader!</h2>
+      <p>Pick up where you left off. Your books are waiting for you.</p>
+    </div>
 
-      <div id="status" class="status" role="status">Ready.</div>
+    <!-- Right form panel -->
+    <div class="auth-form-panel">
+      <div class="auth-card">
+        <a class="back-link" href="{% url 'landing' %}">Back to Home</a>
 
-      <form id="login-form" class="form is-active">
-        <div class="form-grid">
-          <label>Email<input required type="email" name="email" placeholder="you@example.com" /></label>
-          <label>Password
-            <div class="password-field">
-              <input required type="password" id="login-password" name="password" placeholder="Enter password" />
-              <button type="button" class="toggle-password" data-target="login-password" aria-label="Show password">
-                <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"></path>
-                  <circle cx="12" cy="12" r="3.2"></circle>
-                </svg>
-                <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M3 3l18 18"></path>
-                  <path d="M10.6 6.3A11.5 11.5 0 0 1 12 6c6.5 0 10 6 10 6a16 16 0 0 1-4.1 4.5"></path>
-                  <path d="M6.3 6.3A16.1 16.1 0 0 0 2 12s3.5 6 10 6a11.4 11.4 0 0 0 5.7-1.5"></path>
-                </svg>
-              </button>
-            </div>
-          </label>
+        <div class="auth-title">
+          <img src="{% static 'img/bud.png' %}" alt="Bud" />
+          <h1>Log In</h1>
         </div>
-        <button type="submit">Log In</button>
-      </form>
+        <p class="auth-subtitle">Sign in to your Bud account to continue reading.</p>
 
-      <button class="google-placeholder" type="button" disabled>
-        <span>Google Sign-In</span>
-        <small>Coming soon</small>
-      </button>
+        <div id="status" class="status" role="status" style="display:none;"></div>
 
-      <p class="auth-footnote">No account yet? <a href="{% url 'signup-page' %}">Create one</a></p>
-    </section>
+        <div id="google-signin-btn" class="google-btn-container">
+          <span class="google-btn-loading">Loading Google Sign-In...</span>
+        </div>
+
+        <div class="auth-divider">or continue with email</div>
+
+        <form id="login-form" class="form is-active">
+          <div class="form-grid">
+            <label>Email<input required type="email" name="email" placeholder="you@example.com" /></label>
+            <label>Password
+              <div class="password-field">
+                <input required type="password" id="login-password" name="password" placeholder="Enter password" />
+                <button type="button" class="toggle-password" data-target="login-password" aria-label="Show password">
+                  <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"></path>
+                    <circle cx="12" cy="12" r="3.2"></circle>
+                  </svg>
+                  <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 3l18 18"></path>
+                    <path d="M10.6 6.3A11.5 11.5 0 0 1 12 6c6.5 0 10 6 10 6a16 16 0 0 1-4.1 4.5"></path>
+                    <path d="M6.3 6.3A16.1 16.1 0 0 0 2 12s3.5 6 10 6a11.4 11.4 0 0 0 5.7-1.5"></path>
+                  </svg>
+                </button>
+              </div>
+            </label>
+          </div>
+          <button type="submit">Log In</button>
+        </form>
+
+        <p class="auth-footnote">No account yet? <a href="{% url 'signup-page' %}">Create one</a></p>
+      </div>
+    </div>
   </main>
 
   <script src="{% static 'js/login.js' %}"></script>

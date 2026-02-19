@@ -5,6 +5,9 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
+from django.conf import settings
+from google.oauth2 import id_token as google_id_token
+from google.auth.transport import requests as google_requests
 
 from .serializers import RegisterSerializer, LoginSerializer, UserSerializer
 
@@ -89,3 +92,64 @@ class UserProfileViewSet(viewsets.ViewSet):
             )
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
+
+
+class GoogleClientIdView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return Response({"client_id": settings.GOOGLE_CLIENT_ID})
+
+
+class GoogleAuthView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        credential = request.data.get('credential')
+        if not credential:
+            return Response(
+                {"error": "Google credential is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            idinfo = google_id_token.verify_oauth2_token(
+                credential,
+                google_requests.Request(),
+                settings.GOOGLE_CLIENT_ID
+            )
+        except ValueError:
+            return Response(
+                {"error": "Invalid Google token"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        email = idinfo.get('email')
+        if not email:
+            return Response(
+                {"error": "Google account has no email"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user, created = User.objects.get_or_create(
+            email=email,
+            defaults={
+                'username': email.split('@')[0],
+                'email_verified': True,
+                'is_active': True,
+            }
+        )
+
+        if created:
+            user.set_unusable_password()
+            user.save()
+        elif not user.email_verified:
+            user.email_verified = True
+            user.save(update_fields=['email_verified'])
+
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "user": UserSerializer(user).data,
+        }, status=status.HTTP_200_OK)

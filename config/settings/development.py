@@ -43,3 +43,6 @@ DEFAULT_FROM_EMAIL = env(
     default=EMAIL_HOST_USER or 'noreply@budapp.com'
 )
 FRONTEND_URL = env('FRONTEND_URL', default='http://127.0.0.1:8000')
+
+# Google OAuth
+GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID', default='')

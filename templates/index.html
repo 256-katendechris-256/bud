@@ -4,36 +4,39 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bud | Welcome</title>
+  <title>Bud | Read Together, Grow Together</title>
   <link rel="icon" type="image/png" href="{% static 'img/bud.png' %}" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="{% static 'css/app.css' %}" />
 </head>
-<body class="landing-page">
+<body>
   <div class="noise"></div>
 
   <main class="landing-shell">
-    <section class="landing-hero card">
+    <section class="landing-hero">
       <div class="landing-logo-pane">
-        <img class="landing-logo" src="{% static 'img/bud.png' %}" alt="Bud app icon" />
+        <img class="landing-logo" src="{% static 'img/bud.png' %}" alt="Bud" />
+        <p class="brand-label">Bud BookClub</p>
       </div>
 
       <div class="landing-content">
-        <p class="brand-label">Bud Platform</p>
-        <h1>Grow with every page</h1>
-        <p class="muted">Read, verify, and join your dashboard experience.</p>
+        <p class="brand-label">Welcome to Bud</p>
+        <h1>Read together,<br>grow together</h1>
+        <p class="muted">Track your reading, join book clubs, earn XP, and compete with friends. Your reading adventure starts here.</p>
 
         <div class="landing-actions">
-          <a class="cta" href="{% url 'login-page' %}">Log In</a>
-          <a class="cta secondary-cta" href="{% url 'signup-page' %}">Sign Up</a>
+          <a class="cta" href="{% url 'signup-page' %}">Get Started Free</a>
+          <a class="cta secondary-cta" href="{% url 'login-page' %}">I Have an Account</a>
         </div>
 
-        <button class="google-placeholder" type="button" disabled>
-          <span>Google Sign-In</span>
-          <small>Coming soon</small>
-        </button>
+        <div class="landing-features">
+          <span class="feature-badge"><span class="emoji">&#128214;</span> Track Books</span>
+          <span class="feature-badge"><span class="emoji">&#127942;</span> Earn XP</span>
+          <span class="feature-badge"><span class="emoji">&#128293;</span> Streaks</span>
+          <span class="feature-badge"><span class="emoji">&#128101;</span> Book Clubs</span>
+        </div>
       </div>
     </section>
   </main>

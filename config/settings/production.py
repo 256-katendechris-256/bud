@@ -106,3 +106,6 @@ EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
 EMAIL_TIMEOUT = env.int('EMAIL_TIMEOUT', default=30)
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER or 'noreply@budapp.com')
 FRONTEND_URL = env('FRONTEND_URL', default='https://bud-ruby.vercel.app')
+
+# Google OAuth
+GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID', default='')
