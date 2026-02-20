@@ -93,5 +93,6 @@ class UserSerializer(serializers.ModelSerializer):
             'last_name',
             'role',
             'is_active',
+            'is_staff',
             'created_at',
         )

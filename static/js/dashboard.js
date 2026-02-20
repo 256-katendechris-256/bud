@@ -34,6 +34,12 @@ function getInitials(profile) {
   return "?";
 }
 
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str || "";
+  return div.innerHTML;
+}
+
 function formatDate(dateStr) {
   if (!dateStr) return "-";
   return new Date(dateStr).toLocaleDateString("en-US", {
@@ -85,6 +91,74 @@ function renderProfile(profile) {
       <span class="profile-field-value">${formatDate(profile.created_at)}</span>
     </div>
   `;
+}
+
+// --- Load reading stats ---
+async function loadReadingStats() {
+  if (!state.access) return;
+  try {
+    const stats = await request("/api/reading/progress/stats/", {}, true);
+    const xpEl = document.getElementById("stat-xp");
+    const streakEl = document.getElementById("stat-streak");
+    const booksEl = document.getElementById("stat-books");
+    const timeEl = document.getElementById("stat-time");
+
+    if (xpEl) xpEl.textContent = stats.total_xp.toLocaleString();
+    if (streakEl) streakEl.textContent = `${stats.current_streak} day${stats.current_streak !== 1 ? "s" : ""}`;
+    if (booksEl) booksEl.textContent = stats.books_finished;
+    if (timeEl) timeEl.textContent = `${stats.total_time_hours}h`;
+  } catch (_) {}
+}
+
+// --- Load currently reading ---
+async function loadCurrentlyReading() {
+  if (!state.access) return;
+  const container = document.getElementById("reading-list");
+  if (!container) return;
+
+  try {
+    const data = await request("/api/reading/progress/currently-reading/", {}, true);
+    const books = Array.isArray(data) ? data : data.results || [];
+
+    if (books.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">&#128214;</div>
+          <h3>No books yet</h3>
+          <p>Add your first book to start tracking your reading progress.</p>
+          <a href="/books/" class="ghost" style="display:inline-block;text-decoration:none;">Browse Books</a>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = books.map((ub) => {
+      const book = ub.book;
+      const coverHtml = book.cover_url
+        ? `<img src="${escapeHtml(book.cover_url)}" alt="${escapeHtml(book.title)}" />`
+        : `<div style="width:50px;height:70px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:var(--muted-light);">&#128214;</div>`;
+      const pct = ub.progress_percent || 0;
+      const pageText = book.total_pages > 0
+        ? `${ub.current_page} / ${book.total_pages} pages (${pct}%)`
+        : `${ub.current_page} pages read`;
+
+      return `
+        <div class="reading-item">
+          <div class="reading-item-cover">${coverHtml}</div>
+          <div class="reading-item-info">
+            <div class="reading-item-title">${escapeHtml(book.title)}</div>
+            <div class="reading-item-author">${escapeHtml(book.author)}</div>
+            <div class="progress-bar">
+              <div class="progress-bar-fill" style="width:${pct}%"></div>
+            </div>
+            <div class="reading-item-progress-text">${pageText}</div>
+          </div>
+        </div>
+      `;
+    }).join("");
+  } catch (_) {
+    // Keep the empty state on error
+  }
 }
 
 // --- Load profile ---
@@ -155,8 +229,168 @@ function setupUserDropdown() {
   });
 }
 
+// ============================================================
+// ADD BOOK MODAL
+// ============================================================
+
+function sanitizeUrl(url) {
+  if (!url) return "";
+  return url.startsWith("http") ? url : "";
+}
+
+function setupAddBookModal() {
+  const backdrop    = document.getElementById("add-book-backdrop");
+  const openBtn     = document.getElementById("open-add-book-btn");
+  const closeBtn    = document.getElementById("close-add-book-btn");
+  const searchInput = document.getElementById("add-book-search");
+  const resultsEl   = document.getElementById("add-book-results");
+  const fileInput   = document.getElementById("ab-file-input");
+  const statusEl    = document.getElementById("ab-upload-status");
+
+  if (!backdrop || !openBtn) return;
+
+  let allBooks = [];
+  let targetBookId = null;
+
+  // ---- Open / Close ----
+  openBtn.addEventListener("click", () => {
+    backdrop.style.display = "flex";
+    loadCatalogBooks();
+    setTimeout(() => searchInput.focus(), 120);
+  });
+
+  function resetModal() {
+    backdrop.style.display = "none";
+    searchInput.value = "";
+    if (statusEl) statusEl.textContent = "";
+    allBooks = [];
+    targetBookId = null;
+    resultsEl.innerHTML = '<div class="add-book-hint">&#128214; Loading catalog...</div>';
+    fileInput.value = "";
+  }
+
+  closeBtn.addEventListener("click", resetModal);
+  backdrop.addEventListener("click", (e) => { if (e.target === backdrop) resetModal(); });
+
+  // ---- Client-side search filter ----
+  let debounce;
+  searchInput.addEventListener("input", () => {
+    clearTimeout(debounce);
+    debounce = setTimeout(() => renderBooks(allBooks, searchInput.value.trim()), 200);
+  });
+
+  // ---- Load catalog from API ----
+  async function loadCatalogBooks() {
+    resultsEl.innerHTML = '<div class="add-book-hint">&#128214; Loading catalog...</div>';
+    try {
+      const data = await request("/api/books/?page_size=100", {}, true);
+      allBooks = Array.isArray(data) ? data : (data.results || []);
+      renderBooks(allBooks, searchInput.value.trim());
+    } catch (err) {
+      resultsEl.innerHTML = `<div class="add-book-hint" style="color:var(--rose);">Could not load catalog — ${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  // ---- Render books list ----
+  function renderBooks(books, query) {
+    const q = query.toLowerCase();
+    const filtered = q
+      ? books.filter((b) =>
+          b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q)
+        )
+      : books;
+
+    if (filtered.length === 0) {
+      resultsEl.innerHTML = `<div class="add-book-hint">${
+        q ? "No books match your search." : "No books in the catalog yet."
+      }</div>`;
+      return;
+    }
+
+    resultsEl.innerHTML = filtered.map((b) => `
+      <div class="add-book-result" data-book-id="${b.id}">
+        <div class="add-book-result-cover">
+          ${b.cover_url
+            ? `<img src="${sanitizeUrl(b.cover_url)}" alt="" onerror="this.parentElement.innerHTML='&#128214;'" />`
+            : "&#128214;"}
+        </div>
+        <div class="add-book-result-info">
+          <div class="add-book-result-title">${escapeHtml(b.title)}</div>
+          <div class="add-book-result-author">${escapeHtml(b.author)}</div>
+          ${b.file
+            ? '<span class="ab-has-pdf">&#128196; PDF attached</span>'
+            : '<span class="ab-no-pdf">No PDF</span>'}
+        </div>
+        <button class="add-book-add-btn ${b.file ? "ab-replace" : ""}"
+                data-book-id="${b.id}"
+                type="button">${b.file ? "Replace" : "Attach PDF"}</button>
+      </div>
+    `).join("");
+
+    resultsEl.querySelectorAll(".add-book-add-btn").forEach((btn) => {
+      btn.addEventListener("click", function () {
+        targetBookId = this.dataset.bookId;
+        if (statusEl) statusEl.textContent = "";
+        fileInput.value = "";
+        fileInput.click();
+      });
+    });
+  }
+
+  // ---- File selected — upload to existing book ----
+  fileInput.addEventListener("change", async function () {
+    const file = this.files[0];
+    if (!file || !targetBookId) return;
+
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      if (statusEl) { statusEl.style.color = "var(--rose)"; statusEl.textContent = "Only PDF files are allowed."; }
+      this.value = "";
+      return;
+    }
+
+    const btn = resultsEl.querySelector(`.add-book-add-btn[data-book-id="${targetBookId}"]`);
+    const originalText = btn ? btn.textContent : "";
+    if (btn) { btn.disabled = true; btn.textContent = "Uploading..."; }
+    if (statusEl) statusEl.textContent = "";
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const headers = {};
+      if (state.access) headers.Authorization = `Bearer ${state.access}`;
+      const resp = await fetch(`/api/books/${targetBookId}/upload-file/`, {
+        method: "POST",
+        headers,
+        body: formData,
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data.detail || `Upload failed (${resp.status})`);
+
+      // Update local allBooks entry so re-render reflects the new PDF
+      const idx = allBooks.findIndex((b) => String(b.id) === String(targetBookId));
+      if (idx !== -1) allBooks[idx].file = data.file || true;
+
+      if (statusEl) {
+        statusEl.style.color = "#065f46";
+        statusEl.textContent = `\u2713 PDF attached to "${data.title}"!`;
+      }
+      renderBooks(allBooks, searchInput.value.trim());
+    } catch (err) {
+      if (statusEl) { statusEl.style.color = "var(--rose)"; statusEl.textContent = err.message || "Upload failed. Try again."; }
+      if (btn) { btn.disabled = false; btn.textContent = originalText; }
+    }
+
+    this.value = "";
+    targetBookId = null;
+  });
+}
+
 // --- Init ---
 setupSidebar();
 setupLogout();
 setupUserDropdown();
+setupAddBookModal();
 loadProfile();
+loadReadingStats();
+loadCurrentlyReading();

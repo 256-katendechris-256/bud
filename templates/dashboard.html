@@ -10,6 +10,64 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="{% static 'css/app.css' %}" />
+  <style>
+    .reading-item {
+      display: flex;
+      gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .reading-item:last-child { border-bottom: none; }
+    .reading-item-cover {
+      width: 50px;
+      height: 70px;
+      border-radius: var(--radius-sm);
+      object-fit: cover;
+      background: var(--cream-dark);
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .reading-item-cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .reading-item-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .reading-item-title {
+      font-weight: 700;
+      font-size: 0.9rem;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .reading-item-author {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: var(--line);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--primary);
+      border-radius: 4px;
+      transition: width 0.4s ease;
+    }
+    .reading-item-progress-text {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+  </style>
 </head>
 <body>
   <div class="noise"></div>
@@ -32,7 +90,7 @@
         <a class="nav-item active" href="#">
           <span class="nav-icon">&#127968;</span> Home
         </a>
-        <a class="nav-item" href="#">
+        <a class="nav-item" href="/books/">
           <span class="nav-icon">&#128214;</span> My Books
         </a>
         <a class="nav-item" href="#">
@@ -122,13 +180,13 @@
 
         <!-- Quick Actions -->
         <div class="quick-actions">
-          <button class="quick-action-btn" type="button">
+          <button class="quick-action-btn" type="button" id="open-add-book-btn">
             <div class="quick-action-icon">&#128214;</div>
             Add a Book
           </button>
-          <button class="quick-action-btn" type="button">
-            <div class="quick-action-icon">&#9997;&#65039;</div>
-            Log Reading
+          <button class="quick-action-btn" type="button" id="open-stores-btn">
+            <div class="quick-action-icon">&#128722;</div>
+            Local Stores
           </button>
           <button class="quick-action-btn" type="button">
             <div class="quick-action-icon">&#128101;</div>
@@ -212,7 +270,7 @@
           <a class="mobile-nav-item active" href="#">
             <span class="nav-icon">&#127968;</span> Home
           </a>
-          <a class="mobile-nav-item" href="#">
+          <a class="mobile-nav-item" href="/books/">
             <span class="nav-icon">&#128214;</span> Books
           </a>
           <a class="mobile-nav-item" href="#">
@@ -228,6 +286,323 @@
       </nav>
     </div>
   </div>
+
+  <!-- Add Book Modal -->
+  <div class="modal-backdrop" id="add-book-backdrop" style="display:none;">
+    <div class="modal-box" style="max-height:92vh;">
+      <div class="modal-header">
+        <h2>&#128206; Attach a PDF</h2>
+        <button class="modal-close" id="close-add-book-btn" type="button" aria-label="Close">&#10005;</button>
+      </div>
+      <p class="modal-subtitle">Find a book in the catalog and attach a PDF file to it.</p>
+      <input type="text" id="add-book-search" placeholder="Search by title or author..."
+             autocomplete="off" class="ab-input" />
+      <div id="add-book-results" class="ab-results">
+        <div class="add-book-hint">&#128214; Loading catalog...</div>
+      </div>
+      <input type="file" id="ab-file-input" accept=".pdf" style="display:none;" />
+      <div id="ab-upload-status" style="font-size:0.82rem;margin-top:10px;min-height:18px;text-align:center;"></div>
+    </div>
+  </div>
+
+  <style>
+    .ab-input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      background: var(--cream);
+      color: var(--ink);
+      outline: none;
+      margin-bottom: 12px;
+      display: block;
+      box-sizing: border-box;
+    }
+    .ab-input:focus { border-color: var(--primary); }
+    .ab-results {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 50vh;
+      overflow-y: auto;
+      padding-bottom: 4px;
+    }
+    .add-book-hint {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      padding: 24px 0;
+    }
+    .add-book-result {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px;
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
+      background: var(--cream);
+    }
+    .add-book-result-cover {
+      width: 44px;
+      height: 62px;
+      border-radius: 5px;
+      background: var(--cream-dark);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      overflow: hidden;
+    }
+    .add-book-result-cover img { width: 100%; height: 100%; object-fit: cover; }
+    .add-book-result-info { flex: 1; min-width: 0; }
+    .add-book-result-title {
+      font-weight: 700;
+      font-size: 0.88rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 2px;
+    }
+    .add-book-result-author {
+      font-size: 0.8rem;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+    .ab-has-pdf {
+      font-size: 0.73rem;
+      font-weight: 600;
+      color: #065f46;
+      background: #d1fae5;
+      padding: 2px 8px;
+      border-radius: 20px;
+      display: inline-block;
+    }
+    .ab-no-pdf {
+      font-size: 0.73rem;
+      font-weight: 600;
+      color: var(--muted);
+      background: var(--line);
+      padding: 2px 8px;
+      border-radius: 20px;
+      display: inline-block;
+    }
+    .add-book-add-btn {
+      flex-shrink: 0;
+      padding: 7px 14px;
+      border-radius: 8px;
+      border: 1.5px solid var(--primary);
+      background: var(--primary);
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+    }
+    .add-book-add-btn:hover { opacity: 0.85; }
+    .add-book-add-btn:disabled { opacity: 0.5; cursor: default; }
+    .add-book-add-btn.ab-replace {
+      background: var(--surface);
+      color: var(--primary);
+    }
+    .add-book-add-btn.ab-done {
+      background: #d1fae5;
+      color: #065f46;
+      border-color: transparent;
+    }
+  </style>
+
+  <!-- Local Stores Modal -->
+  <div class="modal-backdrop" id="stores-backdrop" style="display:none;">
+    <div class="modal-box" id="stores-modal">
+      <div class="modal-header">
+        <h2>&#128722; Buy Books in Kampala</h2>
+        <button class="modal-close" id="close-stores-btn" type="button" aria-label="Close">&#10005;</button>
+      </div>
+      <p class="modal-subtitle">Support local bookstores — find your next read in person.</p>
+
+      <div class="store-list">
+
+        <div class="store-card">
+          <div class="store-icon">&#128218;</div>
+          <div class="store-info">
+            <div class="store-name">Aristoc Booklex</div>
+            <div class="store-desc">Uganda's largest bookstore chain. Fiction, academic, African literature &amp; more.</div>
+            <div class="store-locations">
+              <span class="store-tag">Garden City</span>
+              <span class="store-tag">Acacia Mall</span>
+              <span class="store-tag">Oasis Mall</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="store-card">
+          <div class="store-icon">&#128215;</div>
+          <div class="store-info">
+            <div class="store-name">Uganda Bookshop</div>
+            <div class="store-desc">Long-standing shop on Kampala Road. Great for textbooks and local titles.</div>
+            <div class="store-locations">
+              <span class="store-tag">Kampala Road</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="store-card">
+          <div class="store-icon">&#127968;</div>
+          <div class="store-info">
+            <div class="store-name">Book Club Uganda</div>
+            <div class="store-desc">Community-run space for buying, swapping, and discussing books.</div>
+            <div class="store-locations">
+              <span class="store-tag">Kololo</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="store-card">
+          <div class="store-icon">&#9728;&#65039;</div>
+          <div class="store-info">
+            <div class="store-name">Nandos Bookshop</div>
+            <div class="store-desc">Specialising in African fiction, history and children's books.</div>
+            <div class="store-locations">
+              <span class="store-tag">City Centre</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="store-suggest">
+        Know a store we missed?
+        <a href="mailto:hello@budapp.co" class="store-suggest-link">Suggest it &#8594;</a>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    /* Modal backdrop */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 900;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 0;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .modal-box {
+      background: var(--surface, #fff);
+      border-radius: 20px 20px 0 0;
+      width: 100%;
+      max-width: 540px;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 24px 20px 32px;
+      animation: slideUp 0.25s ease;
+    }
+    @keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .modal-header h2 {
+      font-size: 1.15rem;
+      font-weight: 800;
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1rem;
+      cursor: pointer;
+      color: var(--muted, #888);
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+    .modal-close:hover { background: var(--line, #eee); }
+
+    .modal-subtitle {
+      font-size: 0.85rem;
+      color: var(--muted, #888);
+      margin-bottom: 20px;
+    }
+
+    /* Store list */
+    .store-list { display: grid; gap: 12px; }
+
+    .store-card {
+      display: flex;
+      gap: 14px;
+      padding: 14px;
+      border: 1px solid var(--line, #eee);
+      border-radius: 12px;
+      background: var(--cream, #faf8f5);
+    }
+    .store-icon {
+      font-size: 1.6rem;
+      flex-shrink: 0;
+      line-height: 1;
+      margin-top: 2px;
+    }
+    .store-name {
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-bottom: 3px;
+    }
+    .store-desc {
+      font-size: 0.82rem;
+      color: var(--muted, #888);
+      margin-bottom: 8px;
+      line-height: 1.45;
+    }
+    .store-locations { display: flex; flex-wrap: wrap; gap: 6px; }
+    .store-tag {
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: var(--primary-light, #ede9ff);
+      color: var(--primary, #6c63ff);
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    .store-suggest {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 0.83rem;
+      color: var(--muted, #888);
+    }
+    .store-suggest-link {
+      color: var(--primary, #6c63ff);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .store-suggest-link:hover { text-decoration: underline; }
+  </style>
+
+  <script>
+    const storesBackdrop = document.getElementById('stores-backdrop');
+    document.getElementById('open-stores-btn').addEventListener('click', () => {
+      storesBackdrop.style.display = 'flex';
+    });
+    document.getElementById('close-stores-btn').addEventListener('click', () => {
+      storesBackdrop.style.display = 'none';
+    });
+    storesBackdrop.addEventListener('click', (e) => {
+      if (e.target === storesBackdrop) storesBackdrop.style.display = 'none';
+    });
+  </script>
 
   <script src="{% static 'js/dashboard.js' %}"></script>
 </body>

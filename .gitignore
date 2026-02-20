@@ -15,3 +15,4 @@ __pycache__/
 .idea/
 *.sublime-project
 rend.txt
+media/
