@@ -1,4 +1,5 @@
 from django.db.models import Q
+from django.http import FileResponse
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser
@@ -152,6 +153,39 @@ class BookViewSet(viewsets.ModelViewSet):
             serializer.data,
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )
+
+    @action(detail=True, methods=['get'], url_path='download-pdf')
+    def download_pdf(self, request, pk=None):
+        """Download PDF file for a book - authenticatedusers only"""
+        book = self.get_object()
+        
+        if not book.file:
+            return Response(
+                {'detail': 'This book does not have a PDF file available.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        
+        try:
+            # Check if file exists
+            if not book.file.storage.exists(book.file.name):
+                return Response(
+                    {'detail': 'PDF file not found on server.'},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            
+            # Open and stream the PDF file
+            file_handle = book.file.open('rb')
+            response = FileResponse(file_handle, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="{book.title}.pdf"'
+            print(f'📥 [Books] PDF downloaded: {book.title} by user {request.user.email}')
+            return response
+        except Exception as e:
+            print(f'❌ [Books] PDF download error: {e}')
+            return Response(
+                {'detail': f'Error downloading PDF: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
 
 
 class GenreViewSet(viewsets.ReadOnlyModelViewSet):

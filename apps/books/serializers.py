@@ -11,7 +11,7 @@ class GenreSerializer(serializers.ModelSerializer):
 
 class BookListSerializer(serializers.ModelSerializer):
     genres = GenreSerializer(many=True, read_only=True)
-    file = serializers.FileField(read_only=True)
+    file = serializers.SerializerMethodField()
     added_by = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
@@ -22,9 +22,16 @@ class BookListSerializer(serializers.ModelSerializer):
             'google_books_id', 'genres', 'file', 'added_by',
         )
 
+    def get_file(self, obj):
+        """Return file URL if it exists, otherwise None"""
+        if obj.file:
+            return obj.file.url
+        return None
+
 
 class BookDetailSerializer(serializers.ModelSerializer):
     genres = GenreSerializer(many=True, read_only=True)
+    file = serializers.SerializerMethodField()
 
     class Meta:
         model = Book
@@ -35,6 +42,12 @@ class BookDetailSerializer(serializers.ModelSerializer):
             'genres', 'added_by', 'created_at', 'updated_at', 'file',
         )
         read_only_fields = ('added_by', 'created_at', 'updated_at')
+
+    def get_file(self, obj):
+        """Return file URL if it exists, otherwise None"""
+        if obj.file:
+            return obj.file.url
+        return None
 
 
 class BookFileUploadSerializer(serializers.Serializer):

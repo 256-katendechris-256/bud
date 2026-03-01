@@ -7,6 +7,13 @@ environ.Env.read_env(BASE_DIR / '.env')
 
 DEBUG = True
 
+# Allow all hosts in development (Android device + emulator + browser)
+ALLOWED_HOSTS = ['*']
+
+# CORS — allow the Flutter app (running on any IP) to call the API
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
