@@ -4,6 +4,10 @@ from django.shortcuts import render, get_object_or_404
 from apps.books.models import Book
 from apps.reading.models import UserBook
 
+import os
+from django.http import JsonResponse
+from django.conf import settings
+
 
 def app_shell(request):
     return render(request, 'index.html')
@@ -35,3 +39,13 @@ def books_reader_page(request, book_id):
         if ub:
             start_page = ub.current_page
     return render(request, 'reader.html', {'book': book, 'start_page': start_page})
+
+
+def debug_db(request):
+    raw_url = os.environ.get('DATABASE_URL', 'NOT SET')
+    return JsonResponse({
+        'raw_url_start': raw_url[:40] + '...',  # shows enough to verify without exposing full password
+        'db_host': settings.DATABASES['default'].get('HOST'),
+        'db_user': settings.DATABASES['default'].get('USER'),
+        'db_port': settings.DATABASES['default'].get('PORT'),
+    })

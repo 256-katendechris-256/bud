@@ -3,6 +3,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
 from config.views import app_shell, dashboard, login_page, signup_page, books_page, books_reader_page
+from config.views import debug_db
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -15,6 +16,7 @@ urlpatterns = [
     path('api/auth/', include('apps.accounts.urls')),
     path('api/', include('apps.books.urls')),
     path('api/reading/', include('apps.reading.urls')),
+    path('debug-db/', debug_db),
 ]
 
 if settings.DEBUG:
