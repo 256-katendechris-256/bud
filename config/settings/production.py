@@ -1,6 +1,5 @@
 import environ
 from pathlib import Path
-import boto3
 
 from .base import *
 
@@ -13,17 +12,14 @@ if _env_file.is_file():
 
 DEBUG = False
 
-# SECRET_KEY must be set via environment variable in production
 SECRET_KEY = env('SECRET_KEY', default=SECRET_KEY)
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['.vercel.app', 'localhost', '127.0.0.1'])
 
-# Avoid hard dependency on database-backed session tables in serverless runtime.
 SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -33,16 +29,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-STORAGES = {
-    'default': {
-        'BACKEND': 'django.core.files.storage.FileSystemStorage',
-    },
-    'staticfiles': {
-        'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
-    },
-}
-WHITENOISE_USE_FINDERS = True
-
+# Database
 _database_url = env('DATABASE_URL', default='')
 if _database_url:
     DATABASES = {
@@ -61,14 +48,12 @@ else:
         DATABASES = {
             'default': {
                 'ENGINE': 'django.db.backends.postgresql',
-                'NAME': env('SUPABASE_DB_NAME'),
-                'USER': env('SUPABASE_DB_USER'),
-                'PASSWORD': env('SUPABASE_DB_PASSWORD'),
-                'HOST': env('SUPABASE_DB_HOST'),
-                'PORT': env('SUPABASE_DB_PORT'),
-                'OPTIONS': {
-                    'sslmode': 'require',
-                },
+                'NAME': _db_name,
+                'USER': _db_user,
+                'PASSWORD': _db_password,
+                'HOST': _db_host,
+                'PORT': _db_port,
+                'OPTIONS': {'sslmode': 'require'},
             }
         }
     else:
@@ -79,7 +64,7 @@ else:
             }
         }
 
-# Cache - Upstash Redis
+# Cache
 _redis_url = env('REDIS_URL', default='')
 if _redis_url:
     CACHES = {
@@ -97,38 +82,42 @@ else:
     }
 
 # S3/Supabase Storage
-AWS_ACCESS_KEY_ID       = env('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY   = env('AWS_SECRET_ACCESS_KEY')
-AWS_STORAGE_BUCKET_NAME = env('AWS_STORAGE_BUCKET_NAME')
-AWS_S3_REGION_NAME      = env('AWS_S3_REGION_NAME', default='eu-west-1')
-AWS_S3_ENDPOINT_URL     = env('AWS_S3_ENDPOINT_URL')
-AWS_DEFAULT_ACL         = 'public-read'
-AWS_S3_FILE_OVERWRITE   = False
-AWS_QUERYSTRING_AUTH    = False # generates signed URLs for private files
+AWS_ACCESS_KEY_ID        = env('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY    = env('AWS_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME  = env('AWS_STORAGE_BUCKET_NAME')
+AWS_S3_REGION_NAME       = env('AWS_S3_REGION_NAME', default='eu-west-1')
+AWS_S3_ENDPOINT_URL      = env('AWS_S3_ENDPOINT_URL')
+AWS_DEFAULT_ACL          = 'public-read'
+AWS_S3_FILE_OVERWRITE    = False
+AWS_QUERYSTRING_AUTH     = False
 AWS_S3_SIGNATURE_VERSION = 's3v4'
 
+# ✅ Force Supabase public URL format instead of S3 signed URLs
+AWS_S3_CUSTOM_DOMAIN = f"{env('AWS_S3_ENDPOINT_URL').replace('https://', '').replace('/storage/v1/s3', '')}/storage/v1/object/public/{env('AWS_STORAGE_BUCKET_NAME')}"
+
+# ✅ Single STORAGES definition — no duplicate
 STORAGES = {
     'default': {
         'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage',
     },
     'staticfiles': {
-        'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+        'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
     },
 }
 
-MEDIA_URL = f"{env('AWS_S3_ENDPOINT_URL')}/object/public/{env('AWS_STORAGE_BUCKET_NAME')}/"
+MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
 
-# Email — override the console backend from base.py with real SMTP
-EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
-EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
-EMAIL_PORT = env.int('EMAIL_PORT', default=587)
-EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
-EMAIL_USE_SSL = env.bool('EMAIL_USE_SSL', default=False)
-EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
+# Email
+EMAIL_BACKEND     = env('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST        = env('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT        = env.int('EMAIL_PORT', default=587)
+EMAIL_USE_TLS     = env.bool('EMAIL_USE_TLS', default=True)
+EMAIL_USE_SSL     = env.bool('EMAIL_USE_SSL', default=False)
+EMAIL_HOST_USER   = env('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
-EMAIL_TIMEOUT = env.int('EMAIL_TIMEOUT', default=30)
+EMAIL_TIMEOUT     = env.int('EMAIL_TIMEOUT', default=30)
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER or 'noreply@budapp.com')
-FRONTEND_URL = env('FRONTEND_URL', default='https://bud-ruby.vercel.app')
+FRONTEND_URL      = env('FRONTEND_URL', default='https://bud-ruby.vercel.app')
 
 # Google OAuth
 GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID', default='')
