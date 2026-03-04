@@ -29,7 +29,7 @@ DATABASES = {
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'bud-dev-cache',
+        'LOCATION': 'bud-dev-cache', 
     }
 }
 
