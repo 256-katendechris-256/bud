@@ -16,3 +16,4 @@ __pycache__/
 *.sublime-project
 rend.txt
 media/
+node_modules/

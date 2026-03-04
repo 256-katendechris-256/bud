@@ -6,6 +6,7 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+
 from .models import Book, Genre
 from .serializers import (
     BookListSerializer,
@@ -15,7 +16,7 @@ from .serializers import (
     GoogleBookResultSerializer,
 )
 from .permissions import IsBudAdmin
-from .services import GoogleBooksService, BookCatalogService, GoogleBooksAPIError
+from .services import OpenLibraryService, BookCatalogService, GoogleBooksAPIError
 
 
 class BookViewSet(viewsets.ModelViewSet):
@@ -62,13 +63,14 @@ class BookViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='search-google')
     def search_google(self, request):
         query = request.query_params.get('q', '').strip()
-        if not query:
+        if  len(query) < 3:
             return Response(
-                {'detail': 'Query parameter "q" is required.'},
-                status=status.HTTP_400_BAD_REQUEST,
+                status=200
+                #{'detail': 'Query parameter "q" is required.'},
+                #status=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            results = GoogleBooksService.search(query)
+            results = OpenLibraryService.search(query)
         except GoogleBooksAPIError as exc:
             return Response(
                 {'detail': str(exc)},
@@ -133,15 +135,19 @@ class BookViewSet(viewsets.ModelViewSet):
                 {'detail': 'google_books_id is required.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if not self._is_admin(request.user):
-            user_count = Book.objects.filter(added_by=request.user).count()
-            if user_count >= 5:
-                return Response(
-                    {'detail': 'You can add up to 5 books. Remove one of yours first.'},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+        book, created = BookCatalogService.add_from_google(
+            google_books_id,
+            user=request.user
+        )
+        # if not self._is_admin(request.user):
+        #     user_count = Book.objects.filter(added_by=request.user).count()
+        #     if user_count >= 5:
+        #         return Response(
+        #             {'detail': 'You can add up to 5 books. Remove one of yours first.'},
+        #             status=status.HTTP_400_BAD_REQUEST,
+        #         )
 
-        book, created = BookCatalogService.add_from_google(google_books_id, user=request.user)
+        # book, created = BookCatalogService.add_from_google(google_books_id, user=request.user)
         if not book:
             return Response(
                 {'detail': 'Could not fetch book from Google Books.'},

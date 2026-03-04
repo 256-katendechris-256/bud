@@ -1,8 +1,7 @@
-import urllib.request
 import urllib.parse
-import json
+import requests
 
-from django.conf import settings
+from django.core.cache import cache
 from django.db.models import Q
 
 from .models import Book, Genre
@@ -12,73 +11,146 @@ class GoogleBooksAPIError(Exception):
     """Raised when the Google Books API call fails."""
 
 
-class GoogleBooksService:
+class OpenLibraryService:
 
-    BASE_URL = 'https://www.googleapis.com/books/v1/volumes'
+    BASE_URL = "https://openlibrary.org/search.json"
+    BASE_WORK_URL = "https://openlibrary.org/works"
 
     @staticmethod
     def search(query, max_results=10):
-        params = {
-            'q': query,
-            'maxResults': max_results,
-            'printType': 'books',
-        }
-        api_key = getattr(settings, 'GOOGLE_BOOKS_API_KEY', '').strip()
-        if api_key:
-            params['key'] = api_key
+        cache_key = f"ol_search:{query.lower()}:{max_results}"
+        cached = cache.get(cache_key)
+        if cached:
+            return cached
 
-        url = f"{GoogleBooksService.BASE_URL}?{urllib.parse.urlencode(params)}"
+        params = {'q': query, 'limit': max_results}
+        url = f"{OpenLibraryService.BASE_URL}?{urllib.parse.urlencode(params)}"
+
         try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'Bud/1.0'})
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                data = json.loads(resp.read().decode())
-        except Exception as exc:
-            raise GoogleBooksAPIError(
-                'Google Books is temporarily unavailable. '
-                'Check your internet connection or try again later.'
-            ) from exc
+            response = requests.get(url, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+        except requests.RequestException:
+            return []
 
-        items = data.get('items', [])
-        return [GoogleBooksService._normalize(item) for item in items]
+        items = data.get('docs', [])
+        results = [OpenLibraryService._normalize(item) for item in items]
+
+        # Cache the full result list for 30 min
+        cache.set(cache_key, results, timeout=60 * 30)
+
+        # ✅ Also cache each book individually by work_id so add_from_google
+        # can reuse the rich search data (author, cover, pages) instead of
+        # re-fetching from the works endpoint which lacks those fields.
+        for book_data in results:
+            work_id = book_data.get('google_books_id')
+            if work_id:
+                cache.set(f"ol_work:{work_id}", book_data, timeout=60 * 60)
+
+        return results
 
     @staticmethod
-    def fetch_by_id(google_books_id):
-        url = f"{GoogleBooksService.BASE_URL}/{google_books_id}"
-        try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'Bud/1.0'})
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                data = json.loads(resp.read().decode())
-        except Exception:
-            return None
+    def _normalize(book):
+        cover_url = ""
+        if book.get("cover_i"):
+            cover_url = f"https://covers.openlibrary.org/b/id/{book['cover_i']}-M.jpg"
 
-        return GoogleBooksService._normalize(data)
+        isbn_list = book.get("isbn", [])
+        isbn_10 = isbn_list[0] if isbn_list else None
 
-    @staticmethod
-    def _normalize(volume_data):
-        info = volume_data.get('volumeInfo', {})
-        identifiers = {i['type']: i['identifier'] for i in info.get('industryIdentifiers', [])}
-
-        # Prefer HTTPS thumbnail, bump to medium size
-        cover = ''
-        image_links = info.get('imageLinks', {})
-        if image_links:
-            cover = image_links.get('thumbnail', image_links.get('smallThumbnail', ''))
-            cover = cover.replace('http://', 'https://')
-            cover = cover.replace('&edge=curl', '')
+        # Strip full path — /works/OL45883W → OL45883W
+        work_id = book.get('key', '').split('/')[-1]
 
         return {
-            'google_books_id': volume_data.get('id', ''),
-            'title': info.get('title', 'Unknown Title'),
-            'author': ', '.join(info.get('authors', ['Unknown Author'])),
-            'isbn_10': identifiers.get('ISBN_10'),
-            'isbn_13': identifiers.get('ISBN_13'),
-            'total_pages': info.get('pageCount', 0) or 0,
-            'cover_url': cover,
-            'description': info.get('description', ''),
-            'publisher': info.get('publisher', ''),
-            'published_date': info.get('publishedDate', ''),
-            'language': info.get('language', 'en'),
-            'categories': info.get('categories', []),
+            'google_books_id': work_id,
+            'title': book.get('title', 'Unknown Title'),
+            'author': ', '.join(book.get('author_name', ['Unknown Author'])),
+            'isbn_10': isbn_10,
+            'isbn_13': None,
+            'total_pages': book.get('number_of_pages_median', 0) or 0,
+            'cover_url': cover_url,
+            'description': '',
+            'publisher': ', '.join(book.get('publisher', [])[:1]),
+            'published_date': book.get('first_publish_year', ''),
+            'language': 'en',
+            'categories': book.get('subject', [])[:3],
+        }
+
+    @staticmethod
+    def fetch_by_id(work_id):
+        """
+        Fallback fetch when work is not in cache.
+        Hits /works/OL45883W.json — note this endpoint lacks author & cover_i,
+        so we also call the author and editions endpoints to fill the gaps.
+        """
+        work_id = work_id.split('/')[-1]
+        url = f"{OpenLibraryService.BASE_WORK_URL}/{work_id}.json"
+
+        try:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            work_data = response.json()
+        except requests.RequestException:
+            return None
+
+        normalized = OpenLibraryService._normalize_work(work_data, work_id)
+
+        # Attempt to fetch author name from the authors sub-endpoint
+        author_keys = [
+            a.get('author', {}).get('key', '')
+            for a in work_data.get('authors', [])
+            if isinstance(a.get('author'), dict)
+        ]
+        if author_keys:
+            try:
+                author_url = f"https://openlibrary.org{author_keys[0]}.json"
+                author_resp = requests.get(author_url, timeout=5)
+                author_resp.raise_for_status()
+                normalized['author'] = author_resp.json().get('name', 'Unknown Author')
+            except requests.RequestException:
+                pass
+
+        # Attempt to fetch cover + page count from editions endpoint
+        if not normalized['cover_url']:
+            try:
+                editions_url = f"{OpenLibraryService.BASE_WORK_URL}/{work_id}/editions.json?limit=5"
+                ed_resp = requests.get(editions_url, timeout=5)
+                ed_resp.raise_for_status()
+                editions = ed_resp.json().get('entries', [])
+                for ed in editions:
+                    covers = ed.get('covers', [])
+                    if covers and covers[0] > 0:
+                        normalized['cover_url'] = (
+                            f"https://covers.openlibrary.org/b/id/{covers[0]}-M.jpg"
+                        )
+                    if not normalized['total_pages'] and ed.get('number_of_pages'):
+                        normalized['total_pages'] = ed['number_of_pages']
+                    if normalized['cover_url'] and normalized['total_pages']:
+                        break
+            except requests.RequestException:
+                pass
+
+        return normalized
+
+    @staticmethod
+    def _normalize_work(work_data, work_id):
+        description = work_data.get("description", "")
+        if isinstance(description, dict):
+            description = description.get("value", "")
+
+        return {
+            "google_books_id": work_id,
+            "title": work_data.get("title", "Unknown Title"),
+            "author": "Unknown Author",  # filled in by fetch_by_id if possible
+            "isbn_10": None,
+            "isbn_13": None,
+            "total_pages": 0,
+            "cover_url": "",  # filled in by fetch_by_id if possible
+            "description": description,
+            "publisher": "",
+            "published_date": "",
+            "language": "en",
+            "categories": work_data.get("subjects", [])[:5],
         }
 
 
@@ -86,11 +158,19 @@ class BookCatalogService:
 
     @staticmethod
     def add_from_google(google_books_id, user=None):
-        existing = Book.objects.filter(google_books_id=google_books_id).first()
+        work_id = google_books_id.split('/')[-1]
+
+        existing = Book.objects.filter(google_books_id=work_id).first()
         if existing:
             return existing, False
 
-        data = GoogleBooksService.fetch_by_id(google_books_id)
+        # ✅ Check per-book cache first — populated by search(), has full data
+        data = cache.get(f"ol_work:{work_id}")
+
+        # Cache miss (user typed ID manually or cache expired) — fall back to API
+        if not data:
+            data = OpenLibraryService.fetch_by_id(work_id)
+
         if not data:
             return None, False
 
@@ -109,7 +189,6 @@ class BookCatalogService:
             added_by=user,
         )
 
-        # Save Google Books categories as Genre objects
         for cat in data.get('categories', []):
             genre, _ = Genre.objects.get_or_create(name=cat.strip())
             book.genres.add(genre)
