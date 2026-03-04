@@ -102,9 +102,9 @@ AWS_SECRET_ACCESS_KEY   = env('AWS_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = env('AWS_STORAGE_BUCKET_NAME')
 AWS_S3_REGION_NAME      = env('AWS_S3_REGION_NAME', default='eu-west-1')
 AWS_S3_ENDPOINT_URL     = env('AWS_S3_ENDPOINT_URL')
-AWS_DEFAULT_ACL         = 'private'
+AWS_DEFAULT_ACL         = 'public-read'
 AWS_S3_FILE_OVERWRITE   = False
-AWS_QUERYSTRING_AUTH    = True  # generates signed URLs for private files
+AWS_QUERYSTRING_AUTH    = False # generates signed URLs for private files
 AWS_S3_SIGNATURE_VERSION = 's3v4'
 
 STORAGES = {
