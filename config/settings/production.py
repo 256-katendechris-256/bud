@@ -1,5 +1,6 @@
 import environ
 from pathlib import Path
+import boto3
 
 from .base import *
 
@@ -94,6 +95,28 @@ else:
             'LOCATION': 'bud-prod-cache-fallback',
         }
     }
+
+# S3/Supabase Storage
+AWS_ACCESS_KEY_ID       = env('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY   = env('AWS_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = env('AWS_STORAGE_BUCKET_NAME')
+AWS_S3_REGION_NAME      = env('AWS_S3_REGION_NAME', default='eu-west-1')
+AWS_S3_ENDPOINT_URL     = env('AWS_S3_ENDPOINT_URL')
+AWS_DEFAULT_ACL         = 'private'
+AWS_S3_FILE_OVERWRITE   = False
+AWS_QUERYSTRING_AUTH    = True  # generates signed URLs for private files
+AWS_S3_SIGNATURE_VERSION = 's3v4'
+
+STORAGES = {
+    'default': {
+        'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+    },
+}
+
+MEDIA_URL = f"{env('AWS_S3_ENDPOINT_URL')}/object/public/{env('AWS_STORAGE_BUCKET_NAME')}/"
 
 # Email — override the console backend from base.py with real SMTP
 EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
