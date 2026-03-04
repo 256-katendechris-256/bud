@@ -60,13 +60,13 @@ else:
         DATABASES = {
             'default': {
                 'ENGINE': 'django.db.backends.postgresql',
-                'NAME': _db_name,
-                'USER': _db_user,
-                'PASSWORD': _db_password,
-                'HOST': _db_host,
-                'PORT': _db_port,
+                'NAME': env('SUPABASE_DB_NAME'),
+                'USER': env('SUPABASE_DB_USER'),
+                'PASSWORD': env('SUPABASE_DB_PASSWORD'),
+                'HOST': env('SUPABASE_DB_HOST'),
+                'PORT': env('SUPABASE_DB_PORT'),
                 'OPTIONS': {
-                    'sslmode': env('DB_SSLMODE', default='require'),
+                    'sslmode': 'require',
                 },
             }
         }
