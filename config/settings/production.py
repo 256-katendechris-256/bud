@@ -20,6 +20,7 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -100,12 +101,15 @@ STORAGES = {
     'default': {
         'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage',
     },
-    'staticfiles': {
-        'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
-    },
+'staticfiles': {
+    'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+},
 }
 
 MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
+
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Email
 EMAIL_BACKEND     = env('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
