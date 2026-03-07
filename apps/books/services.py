@@ -39,7 +39,7 @@ class OpenLibraryService:
         # Cache the full result list for 30 min
         cache.set(cache_key, results, timeout=60 * 30)
 
-        # ✅ Also cache each book individually by work_id so add_from_google
+        # Also cache each book individually by work_id so add_from_google
         # can reuse the rich search data (author, cover, pages) instead of
         # re-fetching from the works endpoint which lacks those fields.
         for book_data in results:
@@ -87,7 +87,7 @@ class OpenLibraryService:
         url = f"{OpenLibraryService.BASE_WORK_URL}/{work_id}.json"
 
         try:
-            response = requests.get(url, timeout=10)
+            response = requests.get(url, timeout=4)
             response.raise_for_status()
             work_data = response.json()
         except requests.RequestException:
@@ -104,22 +104,22 @@ class OpenLibraryService:
         if author_keys:
             try:
                 author_url = f"https://openlibrary.org{author_keys[0]}.json"
-                author_resp = requests.get(author_url, timeout=5)
+                author_resp = requests.get(author_url, timeout=3)
                 author_resp.raise_for_status()
                 normalized['author'] = author_resp.json().get('name', 'Unknown Author')
             except requests.RequestException:
                 pass
 
         # Attempt to fetch cover + page count from editions endpoint
-        if not normalized['cover_url']:
+        if not normalized['cover_url'] or not normalized['total_pages']:
             try:
                 editions_url = f"{OpenLibraryService.BASE_WORK_URL}/{work_id}/editions.json?limit=5"
-                ed_resp = requests.get(editions_url, timeout=5)
+                ed_resp = requests.get(editions_url, timeout=3)
                 ed_resp.raise_for_status()
                 editions = ed_resp.json().get('entries', [])
                 for ed in editions:
                     covers = ed.get('covers', [])
-                    if covers and covers[0] > 0:
+                    if covers and covers[0] > 0 and not normalized['cover_url']:
                         normalized['cover_url'] = (
                             f"https://covers.openlibrary.org/b/id/{covers[0]}-M.jpg"
                         )
@@ -159,22 +159,19 @@ class BookCatalogService:
     @staticmethod
     def add_from_google(google_books_id, user=None, prefetched_data=None):
         work_id = google_books_id.split('/')[-1]
+
         existing = Book.objects.filter(google_books_id=work_id).first()
         if existing:
             return existing, False
-        
+
+        # Priority: frontend prefetched data → Redis cache → Open Library API
+        # prefetched_data comes from the search result the user already saw,
+        # so it always has full fields (pages, cover, author) — no extra API call needed.
         data = (
-        prefetched_data
-        or cache.get(f"ol_work:{work_id}")
-        or OpenLibraryService.fetch_by_id(work_id)
-    )
-
-        # ✅ Check per-book cache first — populated by search(), has full data
-        data = cache.get(f"ol_work:{work_id}")
-
-        # Cache miss (user typed ID manually or cache expired) — fall back to API
-        if not data:
-            data = OpenLibraryService.fetch_by_id(work_id)
+            prefetched_data
+            or cache.get(f"ol_work:{work_id}")
+            or OpenLibraryService.fetch_by_id(work_id)
+        )
 
         if not data:
             return None, False
@@ -182,21 +179,22 @@ class BookCatalogService:
         book = Book.objects.create(
             title=data['title'],
             author=data['author'],
-            isbn_10=data['isbn_10'] or None,
-            isbn_13=data['isbn_13'] or None,
-            total_pages=data['total_pages'],
-            cover_url=data['cover_url'],
-            description=data['description'],
-            publisher=data['publisher'],
-            published_date=data['published_date'],
-            language=data['language'],
-            google_books_id=data['google_books_id'],
+            isbn_10=data.get('isbn_10') or None,
+            isbn_13=data.get('isbn_13') or None,
+            total_pages=data.get('total_pages') or 0,
+            cover_url=data.get('cover_url', ''),
+            description=data.get('description', ''),
+            publisher=data.get('publisher', ''),
+            published_date=data.get('published_date', ''),
+            language=data.get('language', 'en'),
+            google_books_id=work_id,
             added_by=user,
         )
 
         for cat in data.get('categories', []):
-            genre, _ = Genre.objects.get_or_create(name=cat.strip())
-            book.genres.add(genre)
+            if cat and cat.strip():
+                genre, _ = Genre.objects.get_or_create(name=cat.strip())
+                book.genres.add(genre)
 
         return book, True
 
