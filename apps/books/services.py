@@ -157,12 +157,17 @@ class OpenLibraryService:
 class BookCatalogService:
 
     @staticmethod
-    def add_from_google(google_books_id, user=None):
+    def add_from_google(google_books_id, user=None, prefetched_data=None):
         work_id = google_books_id.split('/')[-1]
-
         existing = Book.objects.filter(google_books_id=work_id).first()
         if existing:
             return existing, False
+        
+        data = (
+        prefetched_data
+        or cache.get(f"ol_work:{work_id}")
+        or OpenLibraryService.fetch_by_id(work_id)
+    )
 
         # ✅ Check per-book cache first — populated by search(), has full data
         data = cache.get(f"ol_work:{work_id}")

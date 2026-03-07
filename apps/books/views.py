@@ -45,12 +45,9 @@ class BookViewSet(viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
     def get_queryset(self):
-        # Start from the base queryset which already has prefetch_related('genres')
         qs = super().get_queryset()
         query = self.request.query_params.get('q', '').strip()
         if query:
-            # Filter the prefetched queryset directly — do NOT replace it with a
-            # fresh Book.objects.filter() call (that would lose prefetch_related)
             qs = qs.filter(Q(title__icontains=query) | Q(author__icontains=query))
         genre_ids = self.request.query_params.getlist('genre')
         if genre_ids:
@@ -63,12 +60,8 @@ class BookViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='search-google')
     def search_google(self, request):
         query = request.query_params.get('q', '').strip()
-        if  len(query) < 3:
-            return Response(
-                status=200
-                #{'detail': 'Query parameter "q" is required.'},
-                #status=status.HTTP_400_BAD_REQUEST,
-            )
+        if len(query) < 3:
+            return Response(status=200)
         try:
             results = OpenLibraryService.search(query)
         except GoogleBooksAPIError as exc:
@@ -135,22 +128,36 @@ class BookViewSet(viewsets.ModelViewSet):
                 {'detail': 'google_books_id is required.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # Build prefetched_data from whatever the frontend sends alongside the ID.
+        # This avoids a Redis cache miss on a cold Vercel serverless instance —
+        # the search result data travels with the request instead of relying on cache.
+        prefetched_data = None
+        if request.data.get('title'):
+            prefetched_data = {
+                'google_books_id': google_books_id,
+                'title':        request.data.get('title', ''),
+                'author':       request.data.get('author', ''),
+                'total_pages':  request.data.get('total_pages', 0) or 0,
+                'cover_url':    request.data.get('cover_url', ''),
+                'description':  request.data.get('description', ''),
+                'publisher':    request.data.get('publisher', ''),
+                'published_date': request.data.get('published_date', ''),
+                'isbn_10':      request.data.get('isbn_10', None),
+                'isbn_13':      request.data.get('isbn_13', None),
+                'language':     request.data.get('language', 'en'),
+                'categories':   request.data.get('categories', []),
+            }
+
         book, created = BookCatalogService.add_from_google(
             google_books_id,
-            user=request.user
+            user=request.user,
+            prefetched_data=prefetched_data,
         )
-        # if not self._is_admin(request.user):
-        #     user_count = Book.objects.filter(added_by=request.user).count()
-        #     if user_count >= 5:
-        #         return Response(
-        #             {'detail': 'You can add up to 5 books. Remove one of yours first.'},
-        #             status=status.HTTP_400_BAD_REQUEST,
-        #         )
 
-        # book, created = BookCatalogService.add_from_google(google_books_id, user=request.user)
         if not book:
             return Response(
-                {'detail': 'Could not fetch book from Google Books.'},
+                {'detail': 'Could not fetch book from Open Library.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
@@ -162,24 +169,22 @@ class BookViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'], url_path='download-pdf')
     def download_pdf(self, request, pk=None):
-        """Download PDF file for a book - authenticatedusers only"""
+        """Download PDF file for a book - authenticated users only."""
         book = self.get_object()
-        
+
         if not book.file:
             return Response(
                 {'detail': 'This book does not have a PDF file available.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        
+
         try:
-            # Check if file exists
             if not book.file.storage.exists(book.file.name):
                 return Response(
                     {'detail': 'PDF file not found on server.'},
                     status=status.HTTP_404_NOT_FOUND,
                 )
-            
-            # Open and stream the PDF file
+
             file_handle = book.file.open('rb')
             response = FileResponse(file_handle, content_type='application/pdf')
             response['Content-Disposition'] = f'attachment; filename="{book.title}.pdf"'
@@ -191,7 +196,6 @@ class BookViewSet(viewsets.ModelViewSet):
                 {'detail': f'Error downloading PDF: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
 
 
 class GenreViewSet(viewsets.ReadOnlyModelViewSet):
