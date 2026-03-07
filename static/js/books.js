@@ -11,12 +11,10 @@ const state = {
   isAdmin: false,
   userRole: "",
   userId: null,
-  // Cache current results so we can open modals from them
   catalogBooks: [],
   googleBooks: [],
   genres: [],
   selectedGenres: [],
-  // Keyed by book id → { current_page, status }
   userProgress: {},
 };
 
@@ -87,10 +85,6 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-/**
- * Sanitize HTML from Google Books descriptions.
- * Allows safe tags (b, i, em, strong, br, p) and strips everything else.
- */
 function sanitizeHtml(html) {
   if (!html) return "";
   const allowed = ["B", "I", "EM", "STRONG", "BR", "P", "UL", "OL", "LI"];
@@ -100,12 +94,10 @@ function sanitizeHtml(html) {
     children.forEach((child) => {
       if (child.nodeType === Node.TEXT_NODE) return;
       if (child.nodeType === Node.ELEMENT_NODE) {
-        // Remove all attributes (onclick, onerror, style, etc.)
         Array.from(child.attributes).forEach((attr) => child.removeAttribute(attr.name));
         if (allowed.includes(child.tagName)) {
           clean(child);
         } else {
-          // Replace disallowed tag with its text content
           child.replaceWith(...child.childNodes);
         }
       } else {
@@ -188,7 +180,6 @@ function renderBookCard(book, isGoogle = false) {
 function renderResults(books, isGoogle = false) {
   state.loading = false;
 
-  // Cache results
   if (isGoogle) {
     state.googleBooks = books || [];
   } else {
@@ -380,14 +371,32 @@ function showGoogleBookModal(book) {
 
   document.getElementById("modal-add-btn").addEventListener("click", async function () {
     const btn = this;
-    const gid = btn.dataset.gid;
     btn.disabled = true;
     btn.textContent = "Adding...";
 
     try {
+      // ✅ Send full book data with the request so the backend never needs to
+      // re-fetch from Open Library. This guarantees pages, cover, and author
+      // are always saved correctly regardless of cache state on Vercel.
       await request(
         "/api/books/add-from-google/",
-        { method: "POST", body: JSON.stringify({ google_books_id: gid }) },
+        {
+          method: "POST",
+          body: JSON.stringify({
+            google_books_id: book.google_books_id,
+            title:          book.title        || "",
+            author:         book.author       || "",
+            total_pages:    book.total_pages  || 0,
+            cover_url:      book.cover_url    || "",
+            description:    book.description  || "",
+            publisher:      book.publisher    || "",
+            published_date: book.published_date || "",
+            isbn_10:        book.isbn_10      || null,
+            isbn_13:        book.isbn_13      || null,
+            language:       book.language     || "en",
+            categories:     book.categories   || [],
+          }),
+        },
         true
       );
       btn.textContent = "Added to Bud!";
@@ -418,12 +427,10 @@ function showCatalogBookModal(book) {
     .map((g) => `<span class="badge badge-info">${escapeHtml(g.name)}</span>`)
     .join("");
 
-  // Current reading progress for this book
   const progress = state.userProgress[book.id];
   const currentPage = progress ? progress.current_page : 0;
   const pageLabel = currentPage > 0 ? ` · p.${currentPage}` : "";
 
-  // Read button — shows page number if user has started
   const readBtn = book.file
     ? `<a href="/books/${book.id}/read/"
           id="modal-read-btn"
@@ -432,7 +439,6 @@ function showCatalogBookModal(book) {
        </a>`
     : `<button class="ghost" disabled style="flex:1;min-width:140px;opacity:0.5;">No PDF yet</button>`;
 
-  // Remove button — only for the uploader or admin
   const canRemove = book.added_by === state.userId || state.isAdmin;
   const removeBtn = canRemove
     ? `<button id="modal-remove-btn" class="ghost" type="button"
@@ -440,13 +446,11 @@ function showCatalogBookModal(book) {
           title="Remove book">&#128465;</button>`
     : "";
 
-  // Admin edit button
   const editBtn = state.isAdmin
     ? `<button class="ghost" id="modal-edit-btn" type="button" style="flex:1;min-width:100px;">Edit</button>`
     : "";
 
   modalBody.innerHTML = `
-    <!-- Detail View -->
     <div id="modal-detail-view">
       <div class="modal-book-top">
         <div class="modal-book-cover">${coverHtml}</div>
@@ -470,7 +474,6 @@ function showCatalogBookModal(book) {
       </div>
     </div>
 
-    <!-- Edit Form (hidden by default, admin only) -->
     <div class="edit-form" id="modal-edit-form">
       <div class="form-grid">
         <label class="full">Title
@@ -502,7 +505,6 @@ function showCatalogBookModal(book) {
     </div>
   `;
 
-  // Wire up Remove button
   if (canRemove) {
     document.getElementById("modal-remove-btn").addEventListener("click", async function () {
       if (!confirm(`Remove "${book.title}" from the catalog? This cannot be undone.`)) return;
@@ -521,7 +523,6 @@ function showCatalogBookModal(book) {
     });
   }
 
-  // Wire up admin Edit
   if (state.isAdmin) {
     const editForm = document.getElementById("modal-edit-form");
     const detailView = document.getElementById("modal-detail-view");
@@ -542,12 +543,12 @@ function showCatalogBookModal(book) {
       this.disabled = true;
       this.textContent = "Saving...";
       const payload = {
-        title: document.getElementById("edit-title").value.trim(),
-        author: document.getElementById("edit-author").value.trim(),
+        title:       document.getElementById("edit-title").value.trim(),
+        author:      document.getElementById("edit-author").value.trim(),
         total_pages: parseInt(document.getElementById("edit-pages").value) || 0,
-        language: document.getElementById("edit-language").value.trim(),
-        cover_url: document.getElementById("edit-cover").value.trim(),
-        publisher: document.getElementById("edit-publisher").value.trim(),
+        language:    document.getElementById("edit-language").value.trim(),
+        cover_url:   document.getElementById("edit-cover").value.trim(),
+        publisher:   document.getElementById("edit-publisher").value.trim(),
         description: document.getElementById("edit-description").value.trim(),
       };
       try {
@@ -631,7 +632,6 @@ async function loadProfile() {
     if (headerAvatar) headerAvatar.textContent = initials;
     if (headerUsername) headerUsername.textContent = name;
 
-    // Check admin role
     state.userRole = profile.role || "";
     state.isAdmin = ["SUPER_ADMIN", "CLUB_ADMIN"].includes(profile.role) || profile.is_staff;
     state.userId = profile.id;
@@ -642,7 +642,7 @@ async function loadProfile() {
 }
 
 // ============================================================
-// SIDEBAR & LOGOUT (same as dashboard)
+// SIDEBAR & LOGOUT
 // ============================================================
 
 function setupSidebar() {
@@ -685,7 +685,6 @@ function setupLogout() {
 searchInput.addEventListener("input", handleSearch);
 tabs.forEach((t) => t.addEventListener("click", () => switchTab(t.dataset.tab)));
 
-// Close modal on Escape key
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeModal();
 });
