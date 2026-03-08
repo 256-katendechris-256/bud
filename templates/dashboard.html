@@ -417,6 +417,20 @@
       color: #065f46;
       border-color: transparent;
     }
+
+    /* Mobile stat cards — 2x2 grid */
+@media (max-width: 768px) {
+  .stat-cards {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px;
+  }
+  .stat-card {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px;
+  }
+}
   </style>
 
   <!-- Local Stores Modal -->

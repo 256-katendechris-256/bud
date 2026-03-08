@@ -2041,4 +2041,36 @@ button:disabled {
   .landing-logo-pane {
     min-height: 220px;
   }
+
+  /* ============================================================
+   FIXES — Mobile layout corrections
+   ============================================================ */
+
+/* Keep stat cards 2-column even on small phones */
+@media (max-width: 480px) {
+  .stat-cards {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 14px 10px;
+  }
+
+  .stat-card-value {
+    font-size: 1.2rem;
+  }
+
+  /* Keep quick actions 2-column too */
+  .quick-actions {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* Fix broken logo on landing page mobile —
+   constrain image so it doesn't overflow before it loads */
+.landing-logo-pane img {
+  max-width: 200px;
+  width: 100%;
+}
 }
