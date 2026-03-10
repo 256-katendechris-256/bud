@@ -4,7 +4,7 @@ from django.http  import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.conf  import settings
-from qstash       import Receiver
+from qstash import Receiver
 
 logger = logging.getLogger(__name__)
 
