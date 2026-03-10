@@ -1,6 +1,7 @@
 import os
+from .celery import app as celery_app
 
-
+__all__ = ['celery_app']
 _settings_module = os.getenv("DJANGO_SETTINGS_MODULE", "")
 _django_env = os.getenv("DJANGO_ENV", "").lower()
 _is_render = os.getenv("RENDER", "").lower() == "true"

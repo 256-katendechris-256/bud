@@ -38,10 +38,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_extensions',
 
     # Third-party
     'rest_framework',
     'corsheaders',
+    'notifications',
+    # 'django_celery_beat',
 
     # Local apps
     'apps.accounts',
@@ -199,3 +202,41 @@ GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
 # Google Books API (optional — increases rate limit from 1k to 40k req/day)
 # Get a free key at: https://console.cloud.google.com/ → APIs → Books API
 GOOGLE_BOOKS_API_KEY = os.environ.get('GOOGLE_BOOKS_API_KEY', '')
+
+
+# Firebase
+FIREBASE_CREDENTIALS_PATH = os.path.join(BASE_DIR, 'firebase_credentials.json')
+
+# Celery
+CELERY_BROKER_URL = os.environ.get('UPSTASH_REDIS_URL')
+CELERY_RESULT_BACKEND = os.environ.get('UPSTASH_REDIS_URL')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Africa/Kampala'
+
+# Celery Beat scheduled tasks
+# from celery.schedules import crontab
+
+# CELERY_BEAT_SCHEDULE = {
+#     'streak-warning-9pm': {
+#         'task': 'notifications.tasks.check_streaks',
+#         'schedule': crontab(hour=21, minute=0),
+#     },
+#     'streak-sos-1130pm': {
+#         'task': 'notifications.tasks.midnight_sos',
+#         'schedule': crontab(hour=23, minute=30),
+#     },
+#     'daily-reminder': {
+#         'task': 'notifications.tasks.send_daily_reminders',
+#         'schedule': crontab(minute=0),  # every hour, task filters by user pref time
+#     },
+#     'weekly-digest-sunday': {
+#         'task': 'notifications.tasks.weekly_digest',
+#         'schedule': crontab(hour=18, minute=0, day_of_week=0),
+#     },
+# }
+
+# QStash
+QSTASH_TOKEN = os.environ.get('QSTASH_TOKEN', '')
+QSTASH_CURRENT_SIGNING_KEY = os.environ.get('QSTASH_CURRENT_SIGNING_KEY', '')
+QSTASH_NEXT_SIGNING_KEY    = os.environ.get('QSTASH_NEXT_SIGNING_KEY', '')

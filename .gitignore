@@ -18,3 +18,4 @@ rend.txt
 media/
 node_modules/
 test_conn.py
+firebase_credentials.json

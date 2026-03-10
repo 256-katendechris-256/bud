@@ -17,6 +17,7 @@ urlpatterns = [
     path('api/', include('apps.books.urls')),
     path('api/reading/', include('apps.reading.urls')),
     path('debug-db/', debug_db),
+    path('api/notifications/', include('notifications.urls')),
 ]
 
 if settings.DEBUG:
