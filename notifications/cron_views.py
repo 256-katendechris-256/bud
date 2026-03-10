@@ -1,31 +1,27 @@
-import json
 import logging
-from django.http  import JsonResponse
+from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
-from django.conf  import settings
-from qstash import Receiver
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-
 def _verify_qstash(request) -> bool:
-    """Verify the request genuinely came from QStash."""
-    receiver = Receiver(
-        current_signing_key = settings.QSTASH_CURRENT_SIGNING_KEY,
-        next_signing_key    = settings.QSTASH_NEXT_SIGNING_KEY,
-    )
     try:
+        from qstash import Receiver
+        receiver = Receiver(
+            current_signing_key=settings.QSTASH_CURRENT_SIGNING_KEY,
+            next_signing_key   =settings.QSTASH_NEXT_SIGNING_KEY,
+        )
         receiver.verify(
-            signature = request.headers.get('Upstash-Signature', ''),
-            body      = request.body.decode(),
-            url       = request.build_absolute_uri(),
+            signature=request.headers.get('Upstash-Signature', ''),
+            body     =request.body.decode(),
+            url      =request.build_absolute_uri(),
         )
         return True
     except Exception as e:
-        logger.warning(f'QStash signature verification failed: {e}')
+        logger.warning(f'QStash verification failed: {e}')
         return False
-
 
 @csrf_exempt
 @require_POST
