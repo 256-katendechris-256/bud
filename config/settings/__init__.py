@@ -1,7 +1,13 @@
 import os
-from .celery import app as celery_app
 
-__all__ = ['celery_app']
+if not os.environ.get('VERCEL'):
+    try:
+        from .celery import app as celery_app
+        __all__ = ('celery_app',)
+    except ImportError:
+        pass
+
+
 _settings_module = os.getenv("DJANGO_SETTINGS_MODULE", "")
 _django_env = os.getenv("DJANGO_ENV", "").lower()
 _is_render = os.getenv("RENDER", "").lower() == "true"
@@ -16,3 +22,4 @@ if (
     from .production import *  # noqa: F401,F403
 else:
     from .development import *  # noqa: F401,F403
+
