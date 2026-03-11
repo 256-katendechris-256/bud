@@ -2,6 +2,9 @@ from celery import shared_task
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from datetime import timedelta
+from .models import NotificationPreference, NotificationLog
+from .services import send_push
+import pytz
 
 User = get_user_model()
 
@@ -100,39 +103,36 @@ def midnight_sos():
 
 @shared_task
 def send_daily_reminders():
-    """
-    Runs every hour — sends reminder only to users
-    whose reminder_time matches the current hour.
-    """
-    from .models import NotificationPreference, NotificationLog
-    from .services import send_push
 
-    current_hour = timezone.now().astimezone(
-        timezone.get_current_timezone()
-    ).hour
+    now_utc = timezone.now()
 
     prefs = NotificationPreference.objects.filter(
         goal_reminders=True,
-        reminder_time__hour=current_hour,
     ).select_related('user')
 
     for pref in prefs:
-        user = pref.user
+        try:
+            user_tz   = pytz.timezone(pref.timezone)
+            now_local = now_utc.astimezone(user_tz)
 
-        title = "Time to read 📖"
-        body  = "Your daily reading reminder — even 10 minutes counts."
+            if now_local.hour == pref.reminder_time.hour:
+                user  = pref.user
+                title = 'Time to read 📖'
+                body  = 'Your daily reading reminder — even 10 minutes counts.'
 
-        send_push(user, title, body, data={'type': 'goal', 'urgency': 'low'})
+                send_push(user, title, body, data={'type': 'goal', 'urgency': 'low'})
 
-        NotificationLog.objects.create(
-            user       = user,
-            notif_type = 'goal',
-            urgency    = 'low',
-            title      = title,
-            body       = body,
-        )
-
-
+                NotificationLog.objects.create(
+                    user       = user,
+                    notif_type = 'goal',
+                    urgency    = 'low',
+                    title      = title,
+                    body       = body,
+                )
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(
+                f'Reminder failed for {pref.user.username}: {e}')
 @shared_task
 def weekly_digest():
     """

@@ -36,3 +36,4 @@ whitenoise==6.12.0
 qstash
 celery
 firebase-admin
+pytz

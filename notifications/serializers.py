@@ -31,4 +31,9 @@ class NotificationLogSerializer(serializers.ModelSerializer):
             'data',
             'sent_at',
             'opened',
+            'streak_alerts',
+            'league_alerts',
+            'goal_reminders',
+            'reminder_time',
+            'timezone'
         ]
