@@ -18,5 +18,5 @@ urlpatterns = [
     path('cron/weekly-digest/',    cron_views.cron_weekly_digest,    name='cron-weekly-digest'),
 
     path('<int:pk>/delete/', views.delete_notification,     name='notification-delete'),
-    path('delete-all/',  views.delete_all_notificationsions, name='notification-delete-all'),
+    path('delete-all/',  views.delete_all_notifications, name='notification-delete-all'),
 ]
