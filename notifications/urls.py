@@ -16,4 +16,7 @@ urlpatterns = [
     path('cron/midnight-sos/',     cron_views.cron_midnight_sos,     name='cron-midnight-sos'),
     path('cron/daily-reminders/',  cron_views.cron_daily_reminders,  name='cron-daily-reminders'),
     path('cron/weekly-digest/',    cron_views.cron_weekly_digest,    name='cron-weekly-digest'),
+
+    path('<int:pk>/delete/', views.delete_notification,     name='notification-delete'),
+    path('delete-all/',  views.delete_all_notificationsions, name='notification-delete-all'),
 ]

@@ -103,14 +103,77 @@ def midnight_sos():
 
 @shared_task
 def send_daily_reminders():
+    from .models import NotificationPreference, NotificationLog
+    from .services import send_push
+    import pytz
+    from django.utils import timezone
 
-    now_utc = timezone.now()
+    now_utc   = timezone.now()
+    today_utc = now_utc.date()
 
     prefs = NotificationPreference.objects.filter(
         goal_reminders=True,
     ).select_related('user')
 
     for pref in prefs:
+        try:
+            # Skip if already sent today
+            if pref.last_reminder_date == today_utc:
+                continue
+
+            user_tz   = pytz.timezone(pref.timezone)
+            now_local = now_utc.astimezone(user_tz)
+
+            same_hour   = now_local.hour   == pref.reminder_time.hour
+            same_minute = abs(now_local.minute - pref.reminder_time.minute) < 5
+
+            if same_hour and same_minute:
+                user  = pref.user
+                title = 'Time to read 📖'
+                body  = 'Your daily reading reminder — even 10 minutes counts.'
+
+                send_push(user, title, body, data={'type': 'goal', 'urgency': 'low'})
+
+                NotificationLog.objects.create(
+                    user=user, notif_type='goal', urgency='low',
+                    title=title, body=body,
+                )
+
+                # Mark as sent today so it won't fire again
+                pref.last_reminder_date = today_utc
+                pref.save(update_fields=['last_reminder_date'])
+
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(
+                f'Reminder failed for {pref.user.username}: {e}')
+
+    now_utc = timezone.now()
+
+    prefs = NotificationPreference.objects.filter(
+        goal_reminders=True,
+    ).select_related('user')
+    for pref in prefs:
+        try:
+            user_tz   = pytz.timezone(pref.timezone)
+            now_local = now_utc.astimezone(user_tz)
+
+            # Match hour and within 5-minute window of set time
+            same_hour   = now_local.hour   == pref.reminder_time.hour
+            same_minute = abs(now_local.minute - pref.reminder_time.minute) < 5
+
+            if same_hour and same_minute:
+                user  = pref.user
+                title = 'Time to read 📖'
+                body  = 'Your daily reading reminder — even 10 minutes counts.'
+                send_push(user, title, body, data={'type': 'goal', 'urgency': 'low'})
+                NotificationLog.objects.create(
+                    user=user, notif_type='goal', urgency='low',
+                    title=title, body=body,
+                )
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f'Reminder failed for {pref.user.username}: {e}')
         try:
             user_tz   = pytz.timezone(pref.timezone)
             now_local = now_utc.astimezone(user_tz)
@@ -133,6 +196,8 @@ def send_daily_reminders():
             import logging
             logging.getLogger(__name__).error(
                 f'Reminder failed for {pref.user.username}: {e}')
+            
+
 @shared_task
 def weekly_digest():
     """

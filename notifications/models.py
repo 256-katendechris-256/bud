@@ -19,6 +19,7 @@ class NotificationPreference(models.Model):
     league_alerts    = models.BooleanField(default=True)
     goal_reminders   = models.BooleanField(default=True)
     reminder_time    = models.TimeField(default='07:00')
+    last_reminder_date = models.DateField(null=True, blank=True)
     timezone         = models.CharField(max_length=50, default='Africa/Kampala')
 
     def __str__(self):

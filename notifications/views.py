@@ -99,3 +99,20 @@ def preferences(request):
         serializer.save()
         return Response(serializer.data)
     return Response(serializer.errors, status=400)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_notification(request, pk):
+    deleted, _ = NotificationLog.objects.filter(
+        pk=pk, user=request.user
+    ).delete()
+    if deleted:
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    return Response({'error': 'not found'}, status=404)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_all_notifications(request):
+    NotificationLog.objects.filter(user=request.user).delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
