@@ -1,5 +1,11 @@
 from rest_framework import serializers
-from .models import NotificationLog, NotificationPreference
+from .models import NotificationLog, NotificationPreference, FCMToken
+
+
+class FCMTokenSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = FCMToken
+        fields = ['token']
 
 
 class NotificationLogSerializer(serializers.ModelSerializer):
