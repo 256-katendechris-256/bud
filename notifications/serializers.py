@@ -1,22 +1,5 @@
 from rest_framework import serializers
-from .models import FCMToken, NotificationPreference, NotificationLog
-
-
-class FCMTokenSerializer(serializers.ModelSerializer):
-    class Meta:
-        model  = FCMToken
-        fields = ['token']
-
-
-class NotificationPreferenceSerializer(serializers.ModelSerializer):
-    class Meta:
-        model  = NotificationPreference
-        fields = [
-            'streak_alerts',
-            'league_alerts',
-            'goal_reminders',
-            'reminder_time',
-        ]
+from .models import NotificationLog, NotificationPreference
 
 
 class NotificationLogSerializer(serializers.ModelSerializer):
@@ -31,9 +14,16 @@ class NotificationLogSerializer(serializers.ModelSerializer):
             'data',
             'sent_at',
             'opened',
+        ]
+
+
+class NotificationPreferenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = NotificationPreference
+        fields = [
             'streak_alerts',
             'league_alerts',
             'goal_reminders',
             'reminder_time',
-            'timezone'
+            'timezone',
         ]
