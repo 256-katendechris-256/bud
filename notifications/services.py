@@ -8,14 +8,16 @@ logger = logging.getLogger(__name__)
 
 # Initialise Firebase app once
 if not firebase_admin._apps:
-    # Use env var on Vercel, fall back to file locally
     if settings.FIREBASE_CREDENTIALS_JSON:
-        cred_dict = json.loads(settings.FIREBASE_CREDENTIALS_JSON)
+        raw = settings.FIREBASE_CREDENTIALS_JSON
+        # Strip outer quotes if double-encoded
+        if raw.startswith('"'):
+            raw = json.loads(raw)
+        cred_dict = json.loads(raw) if isinstance(raw, str) else raw
         cred = credentials.Certificate(cred_dict)
     else:
         cred = credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH)
     firebase_admin.initialize_app(cred)
-
 
 def send_push(user, title: str, body: str, data: dict = None):
     """
