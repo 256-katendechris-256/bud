@@ -207,6 +207,9 @@ GOOGLE_BOOKS_API_KEY = os.environ.get('GOOGLE_BOOKS_API_KEY', '')
 # Firebase
 FIREBASE_CREDENTIALS_PATH = os.path.join(BASE_DIR, 'firebase_credentials.json')
 
+# On Vercel, load from env var instead of file
+FIREBASE_CREDENTIALS_JSON = os.environ.get('FIREBASE_CREDENTIALS_JSON')
+
 # Celery
 CELERY_BROKER_URL = os.environ.get('UPSTASH_REDIS_URL')
 CELERY_RESULT_BACKEND = os.environ.get('UPSTASH_REDIS_URL')

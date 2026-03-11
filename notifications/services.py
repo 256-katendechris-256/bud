@@ -1,3 +1,4 @@
+import json
 import logging
 import firebase_admin
 from firebase_admin import credentials, messaging
@@ -7,7 +8,12 @@ logger = logging.getLogger(__name__)
 
 # Initialise Firebase app once
 if not firebase_admin._apps:
-    cred = credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH)
+    # Use env var on Vercel, fall back to file locally
+    if settings.FIREBASE_CREDENTIALS_JSON:
+        cred_dict = json.loads(settings.FIREBASE_CREDENTIALS_JSON)
+        cred = credentials.Certificate(cred_dict)
+    else:
+        cred = credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH)
     firebase_admin.initialize_app(cred)
 
 
