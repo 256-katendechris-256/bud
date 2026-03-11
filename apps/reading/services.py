@@ -45,33 +45,58 @@ class ReadingService:
         )
 
         pages_read = max(0, end_page - start_page)
-        xp_earned = ReadingService.calculate_xp(pages_read, duration_minutes)
+        xp_earned  = ReadingService.calculate_xp(pages_read, duration_minutes)
 
         session = ReadingSession.objects.create(
-            user=user,
-            book=book,
-            user_book=user_book,
-            start_page=start_page,
-            end_page=end_page,
-            pages_read=pages_read,
+            user            =user,
+            book            =book,
+            user_book       =user_book,
+            start_page      =start_page,
+            end_page        =end_page,
+            pages_read      =pages_read,
             duration_minutes=duration_minutes,
-            xp_earned=xp_earned,
+            xp_earned       =xp_earned,
         )
 
-        # Update current page
+        # Update current page + progress percent
         user_book.current_page = end_page
+
+        if book.total_pages and book.total_pages > 0:
+            user_book.progress_percent = min(
+                100, round((end_page / book.total_pages) * 100)
+            )
+
         if user_book.status != 'READING':
             user_book.status = 'READING'
             if not user_book.started_at:
                 user_book.started_at = timezone.now()
 
         # Auto-finish if reached total pages
-        if book.total_pages > 0 and end_page >= book.total_pages:
-            user_book.status = 'FINISHED'
+        if book.total_pages and book.total_pages > 0 and end_page >= book.total_pages:
+            user_book.status      = 'FINISHED'
             user_book.finished_at = timezone.now()
 
         user_book.save()
+
+        # Award XP inline — no Celery, bypasses any signal that hits Redis
+        ReadingService._award_xp_inline(user, xp_earned)
+
         return session
+
+    @staticmethod
+    def _award_xp_inline(user, xp):
+        """Award XP directly to gamification profile.
+        Uses .update() to avoid triggering post_save signals."""
+        if xp <= 0:
+            return
+        try:
+            from apps.gamification.models import UserProfile
+            profile, _ = UserProfile.objects.get_or_create(user=user)
+            UserProfile.objects.filter(pk=profile.pk).update(
+                total_xp=(profile.total_xp or 0) + xp
+            )
+        except Exception:
+            pass  # never break session logging if gamification is missing
 
     @staticmethod
     def get_reading_stats(user):
@@ -88,9 +113,9 @@ class ReadingService:
         current_streak = ReadingService._calculate_streak(user)
 
         return {
-            'total_xp': total_xp,
-            'current_streak': current_streak,
-            'books_finished': books_finished,
+            'total_xp'        : total_xp,
+            'current_streak'  : current_streak,
+            'books_finished'  : books_finished,
             'total_time_hours': round(total_minutes / 60, 1),
         }
 
@@ -103,9 +128,9 @@ class ReadingService:
 
     @staticmethod
     def _calculate_streak(user):
-        today = timezone.now().date()
+        today  = timezone.now().date()
         streak = 0
-        day = today
+        day    = today
         while True:
             has_session = ReadingSession.objects.filter(
                 user=user,
