@@ -2,25 +2,18 @@ from celery import shared_task
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from datetime import timedelta
-from .models import NotificationPreference, NotificationLog
-from .services import send_push
-import pytz
 
 User = get_user_model()
 
 
 @shared_task
 def check_streaks():
-    """
-    Runs at 9PM — warns users who haven't read today
-    and still have an active streak to protect.
-    """
+    """Runs at 9PM — warns users who haven't read today and have a streak to protect."""
     from .models import NotificationPreference, NotificationLog
     from .services import send_push
     from apps.reading.models import ReadingSession
 
     today = timezone.now().date()
-
     prefs = NotificationPreference.objects.filter(
         streak_alerts=True
     ).select_related('user')
@@ -28,15 +21,12 @@ def check_streaks():
     for pref in prefs:
         user = pref.user
 
-        # ReadingSession uses created_at — filter by date portion
         already_read = ReadingSession.objects.filter(
-            user=user,
-            created_at__date=today,
+            user=user, created_at__date=today,
         ).exists()
         if already_read:
             continue
 
-        # Skip if streak is 0 — nothing to lose
         gamification = getattr(user, 'gamification', None)
         streak = getattr(gamification, 'current_streak', 0) if gamification else 0
         if streak == 0:
@@ -46,28 +36,20 @@ def check_streaks():
         body  = f"You have a {streak}-day streak — don't lose it! Open your book now."
 
         send_push(user, title, body, data={'type': 'streak', 'urgency': 'medium'})
-
         NotificationLog.objects.create(
-            user       = user,
-            notif_type = 'streak',
-            urgency    = 'medium',
-            title      = title,
-            body       = body,
+            user=user, notif_type='streak', urgency='medium',
+            title=title, body=body,
         )
 
 
 @shared_task
 def midnight_sos():
-    """
-    Runs at 11:30PM — final urgent warning for users
-    who still haven't read and have a streak > 0.
-    """
+    """Runs at 11:30PM — final urgent warning."""
     from .models import NotificationPreference, NotificationLog
     from .services import send_push
     from apps.reading.models import ReadingSession
 
     today = timezone.now().date()
-
     prefs = NotificationPreference.objects.filter(
         streak_alerts=True
     ).select_related('user')
@@ -76,8 +58,7 @@ def midnight_sos():
         user = pref.user
 
         already_read = ReadingSession.objects.filter(
-            user=user,
-            created_at__date=today,
+            user=user, created_at__date=today,
         ).exists()
         if already_read:
             continue
@@ -91,139 +72,83 @@ def midnight_sos():
         body  = f"30 minutes left! Read just 1 page to save your {streak}-day streak."
 
         send_push(user, title, body, data={'type': 'streak', 'urgency': 'high'})
-
         NotificationLog.objects.create(
-            user       = user,
-            notif_type = 'streak',
-            urgency    = 'high',
-            title      = title,
-            body       = body,
+            user=user, notif_type='streak', urgency='high',
+            title=title, body=body,
         )
 
 
 @shared_task
 def send_daily_reminders():
+    """Runs every 5 min — sends reminder at user's chosen time, once per day."""
     from .models import NotificationPreference, NotificationLog
     from .services import send_push
     import pytz
-    from django.utils import timezone
-
-    now_utc   = timezone.now()
-    today_utc = now_utc.date()
-
-    prefs = NotificationPreference.objects.filter(
-        goal_reminders=True,
-    ).select_related('user')
-
-    for pref in prefs:
-        try:
-            # Skip if already sent today
-            if pref.last_reminder_date == today_utc:
-                continue
-
-            user_tz   = pytz.timezone(pref.timezone)
-            now_local = now_utc.astimezone(user_tz)
-
-            same_hour   = now_local.hour   == pref.reminder_time.hour
-            same_minute = abs(now_local.minute - pref.reminder_time.minute) < 5
-
-            if same_hour and same_minute:
-                user  = pref.user
-                title = 'Time to read 📖'
-                body  = 'Your daily reading reminder — even 10 minutes counts.'
-
-                send_push(user, title, body, data={'type': 'goal', 'urgency': 'low'})
-
-                NotificationLog.objects.create(
-                    user=user, notif_type='goal', urgency='low',
-                    title=title, body=body,
-                )
-
-                # Mark as sent today so it won't fire again
-                pref.last_reminder_date = today_utc
-                pref.save(update_fields=['last_reminder_date'])
-
-        except Exception as e:
-            import logging
-            logging.getLogger(__name__).error(
-                f'Reminder failed for {pref.user.username}: {e}')
 
     now_utc = timezone.now()
 
     prefs = NotificationPreference.objects.filter(
         goal_reminders=True,
     ).select_related('user')
+
     for pref in prefs:
         try:
             user_tz   = pytz.timezone(pref.timezone)
             now_local = now_utc.astimezone(user_tz)
+            today_local = now_local.date()
 
-            # Match hour and within 5-minute window of set time
-            same_hour   = now_local.hour   == pref.reminder_time.hour
+            # Already sent today — skip
+            if pref.last_reminder_date == today_local:
+                continue
+
+            same_hour   = now_local.hour == pref.reminder_time.hour
             same_minute = abs(now_local.minute - pref.reminder_time.minute) < 5
 
-            if same_hour and same_minute:
-                user  = pref.user
-                title = 'Time to read 📖'
-                body  = 'Your daily reading reminder — even 10 minutes counts.'
-                send_push(user, title, body, data={'type': 'goal', 'urgency': 'low'})
-                NotificationLog.objects.create(
-                    user=user, notif_type='goal', urgency='low',
-                    title=title, body=body,
-                )
-        except Exception as e:
-            import logging
-            logging.getLogger(__name__).error(f'Reminder failed for {pref.user.username}: {e}')
-        try:
-            user_tz   = pytz.timezone(pref.timezone)
-            now_local = now_utc.astimezone(user_tz)
+            if not (same_hour and same_minute):
+                continue
 
-            if now_local.hour == pref.reminder_time.hour:
-                user  = pref.user
-                title = 'Time to read 📖'
-                body  = 'Your daily reading reminder — even 10 minutes counts.'
+            user  = pref.user
+            title = 'Time to read 📖'
+            body  = 'Your daily reading reminder — even 10 minutes counts.'
 
-                send_push(user, title, body, data={'type': 'goal', 'urgency': 'low'})
+            send_push(user, title, body, data={'type': 'goal', 'urgency': 'low'})
 
-                NotificationLog.objects.create(
-                    user       = user,
-                    notif_type = 'goal',
-                    urgency    = 'low',
-                    title      = title,
-                    body       = body,
-                )
+            NotificationLog.objects.create(
+                user=user, notif_type='goal', urgency='low',
+                title=title, body=body,
+            )
+
+            # Use .update() for atomicity — prevents race condition if
+            # two cron invocations overlap at the same second
+            NotificationPreference.objects.filter(pk=pref.pk).update(
+                last_reminder_date=today_local
+            )
+
         except Exception as e:
             import logging
             logging.getLogger(__name__).error(
                 f'Reminder failed for {pref.user.username}: {e}')
-            
+
 
 @shared_task
 def weekly_digest():
-    """
-    Runs every Sunday at 6PM — sends each user
-    a summary of their week.
-    """
+    """Runs every Sunday at 6PM — sends weekly reading summary."""
     from .models import NotificationPreference, NotificationLog
     from .services import send_push
     from apps.reading.models import ReadingSession
 
-    prefs = NotificationPreference.objects.filter(
+    prefs    = NotificationPreference.objects.filter(
         goal_reminders=True
     ).select_related('user')
-
     week_ago = timezone.now().date() - timedelta(days=7)
 
     for pref in prefs:
-        user = pref.user
-
+        user     = pref.user
         sessions = ReadingSession.objects.filter(
-            user=user,
-            created_at__date__gte=week_ago,
+            user=user, created_at__date__gte=week_ago,
         )
 
         total_pages  = sum(s.pages_read for s in sessions)
-        # count distinct days using created_at date
         days_read    = sessions.dates('created_at', 'day').count()
         gamification = getattr(user, 'gamification', None)
         streak       = getattr(gamification, 'current_streak', 0) if gamification else 0
@@ -240,22 +165,14 @@ def weekly_digest():
             )
 
         send_push(user, title, body, data={'type': 'goal', 'urgency': 'low'})
-
         NotificationLog.objects.create(
-            user       = user,
-            notif_type = 'goal',
-            urgency    = 'low',
-            title      = title,
-            body       = body,
+            user=user, notif_type='goal', urgency='low',
+            title=title, body=body,
         )
 
 
 @shared_task
 def notify_league_overtake(overtaker_id: int, overtaken_id: int):
-    """
-    Called from a signal when a user surpasses another in XP.
-    Notifies the overtaken user so they feel the competition.
-    """
     from .models import NotificationPreference, NotificationLog
     from .services import send_push
 
@@ -275,14 +192,11 @@ def notify_league_overtake(overtaker_id: int, overtaken_id: int):
     body  = f"{overtaker.username} just passed you in the league. Fight back!"
 
     send_push(overtaken, title, body, data={'type': 'league', 'urgency': 'medium'})
-
     NotificationLog.objects.create(
-        user       = overtaken,
-        notif_type = 'league',
-        urgency    = 'medium',
-        title      = title,
-        body       = body,
+        user=overtaken, notif_type='league', urgency='medium',
+        title=title, body=body,
     )
+
 
 @shared_task
 def notify_achievement(user_id: int, badge_type: str):
@@ -290,14 +204,15 @@ def notify_achievement(user_id: int, badge_type: str):
     from .services import send_push
 
     BADGE_LABELS = {
-        'first_book'   : ('First book finished! 📚', 'You completed your first book. Keep going!'),
-        'streak_7'     : ('7-Day Streak! 🔥',         'A whole week of reading. You\'re on fire!'),
-        'streak_30'    : ('30-Day Streak! 🏆',         'A month straight. Legendary dedication.'),
-        'pages_100'    : ('100 Pages Read! 📖',        'You\'ve read 100 pages. Just the beginning.'),
-        'pages_1000'   : ('1,000 Pages Read! 🎉',      'Four digits. You\'re a real reader now.'),
-        'xp_500'       : ('500 XP Earned! ⭐',         'Halfway to 1,000. Keep earning!'),
-        'xp_5000'      : ('5,000 XP Earned! 👑',       'Elite reader status unlocked.'),
-        'speed_reader' : ('Speed Reader! ⚡',           '50 pages in one session. Impressive.'),
+        'first_book' : ('First book finished! 📚', 'You completed your first book. Keep going!'),
+        'streak_7'   : ('7-Day Streak! 🔥',         "A whole week of reading. You're on fire!"),
+        'streak_30'  : ('30-Day Streak! 🏆',         'A month straight. Legendary dedication.'),
+        'pages_100'  : ('100 Pages Read! 📖',        "You've read 100 pages. Just the beginning."),
+        'pages_1000' : ('1,000 Pages Read! 🎉',      "Four digits. You're a real reader now."),
+        'xp_500'     : ('500 XP Earned! ⭐',         'Halfway to 1,000. Keep earning!'),
+        'xp_5000'    : ('5,000 XP Earned! 👑',       'Elite reader status unlocked.'),
+        'speed_reader': ('Speed Reader! ⚡',          '50 pages in one session. Impressive.'),
+        'books_finished': ('First book finished! 📚', 'You completed your first book. Keep going!'),
     }
 
     title, body = BADGE_LABELS.get(badge_type, ('Badge Unlocked! 🏅', 'You earned a new badge.'))
@@ -308,12 +223,8 @@ def notify_achievement(user_id: int, badge_type: str):
         return
 
     send_push(user, title, body, data={'type': 'achievement', 'badge': badge_type})
-
     NotificationLog.objects.create(
-        user       = user,
-        notif_type = 'achievement',
-        urgency    = 'low',
-        title      = title,
-        body       = body,
-        data       = {'badge_type': badge_type},
+        user=user, notif_type='achievement', urgency='low',
+        title=title, body=body,
+        data={'badge_type': badge_type},
     )
