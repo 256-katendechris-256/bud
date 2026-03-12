@@ -40,9 +40,7 @@ def unregister_token(request):
 @permission_classes([IsAuthenticated])
 def notification_list(request):
     """Returns the 30 most recent notifications for the user."""
-    logs = NotificationLog.objects.filter(
-        user=request.user
-    )[:30]
+    logs = NotificationLog.objects.filter(user=request.user)[:30]
     serializer = NotificationLogSerializer(logs, many=True)
     return Response(serializer.data)
 
@@ -95,10 +93,19 @@ def preferences(request):
     serializer = NotificationPreferenceSerializer(
         pref, data=request.data, partial=True
     )
-    if serializer.is_valid():
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=400)
+
+    # If reminder_time changed → reset last_reminder_date so the
+    # new time can fire today without waiting until tomorrow.
+    new_time = serializer.validated_data.get('reminder_time')
+    if new_time and new_time != pref.reminder_time:
+        serializer.save(last_reminder_date=None)
+    else:
         serializer.save()
-        return Response(serializer.data)
-    return Response(serializer.errors, status=400)
+
+    return Response(serializer.data)
+
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
