@@ -16,6 +16,7 @@ urlpatterns = [
     path('api/auth/', include('apps.accounts.urls')),
     path('api/', include('apps.books.urls')),
     path('api/reading/', include('apps.reading.urls')),
+    path('api/gamification/', include('apps.gamification.urls')),
     path('debug-db/', debug_db),
     path('api/notifications/', include('notifications.urls')),
 ]
