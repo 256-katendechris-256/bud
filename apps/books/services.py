@@ -1,3 +1,4 @@
+import logging
 import urllib.parse
 import requests
 
@@ -5,6 +6,8 @@ from django.core.cache import cache
 from django.db.models import Q
 
 from .models import Book, Genre
+
+logger = logging.getLogger(__name__)
 
 
 class GoogleBooksAPIError(Exception):
@@ -17,9 +20,24 @@ class OpenLibraryService:
     BASE_WORK_URL = "https://openlibrary.org/works"
 
     @staticmethod
+    def _safe_cache_get(key, default=None):
+        try:
+            return cache.get(key, default)
+        except Exception as exc:
+            logger.warning("Cache read failed for key %s: %s", key, exc)
+            return default
+
+    @staticmethod
+    def _safe_cache_set(key, value, timeout=None):
+        try:
+            cache.set(key, value, timeout=timeout)
+        except Exception as exc:
+            logger.warning("Cache write failed for key %s: %s", key, exc)
+
+    @staticmethod
     def search(query, max_results=10):
         cache_key = f"ol_search:{query.lower()}:{max_results}"
-        cached = cache.get(cache_key)
+        cached = OpenLibraryService._safe_cache_get(cache_key)
         if cached:
             return cached
 
@@ -37,7 +55,7 @@ class OpenLibraryService:
         results = [OpenLibraryService._normalize(item) for item in items]
 
         # Cache the full result list for 30 min
-        cache.set(cache_key, results, timeout=60 * 30)
+        OpenLibraryService._safe_cache_set(cache_key, results, timeout=60 * 30)
 
         # Also cache each book individually by work_id so add_from_google
         # can reuse the rich search data (author, cover, pages) instead of
@@ -45,7 +63,9 @@ class OpenLibraryService:
         for book_data in results:
             work_id = book_data.get('google_books_id')
             if work_id:
-                cache.set(f"ol_work:{work_id}", book_data, timeout=60 * 60)
+                OpenLibraryService._safe_cache_set(
+                    f"ol_work:{work_id}", book_data, timeout=60 * 60
+                )
 
         return results
 
@@ -169,7 +189,7 @@ class BookCatalogService:
         # so it always has full fields (pages, cover, author) — no extra API call needed.
         data = (
             prefetched_data
-            or cache.get(f"ol_work:{work_id}")
+            or OpenLibraryService._safe_cache_get(f"ol_work:{work_id}")
             or OpenLibraryService.fetch_by_id(work_id)
         )
 
