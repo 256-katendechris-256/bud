@@ -25,6 +25,21 @@ DATABASES = {
     }
 }
 
+# Fallback to SQLite if PostgreSQL credentials are not provided
+if not all([
+    env('DB_NAME', default=''),
+    env('DB_USER', default=''),
+    env('DB_PASSWORD', default=''),
+    env('DB_HOST', default=''),
+    env('DB_PORT', default='')
+]):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+
 # Cache - local memory for development (no Redis needed locally)
 CACHES = {
     'default': {

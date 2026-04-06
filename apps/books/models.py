@@ -34,6 +34,7 @@ class Book(models.Model):
     google_books_id = models.CharField(max_length=40, null=True, blank=True, unique=True)
     file = models.FileField(
         upload_to='books/pdfs/', blank=True, null=True,
+        max_length=500,
         validators=[FileExtensionValidator(['pdf'])],
     )
     genres = models.ManyToManyField(Genre, blank=True, related_name='books')
