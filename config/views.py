@@ -49,3 +49,7 @@ def debug_db(request):
         'db_user': settings.DATABASES['default'].get('USER'),
         'db_port': settings.DATABASES['default'].get('PORT'),
     })
+
+
+def notes_page(request):
+    return render(request, 'notes.html')

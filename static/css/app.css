@@ -613,10 +613,9 @@ textarea:focus-visible {
    DASHBOARD LAYOUT — Sidebar + Header + Content
    ============================================================ */
 
-/* Dashboard wrapper */
+/* Dashboard wrapper — simplified to block because sidebar is fixed */
 .dash-layout {
-  display: grid;
-  grid-template-columns: var(--sidebar-width) 1fr;
+  display: block;
   min-height: 100vh;
 }
 
@@ -823,7 +822,7 @@ textarea:focus-visible {
 
 .dash-content {
   padding: 28px;
-  max-width: 1100px;
+  max-width: 1400px; /* Increased for better large screen experience */
 }
 
 /* Hamburger toggle (mobile) */

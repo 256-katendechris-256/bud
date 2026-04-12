@@ -386,6 +386,8 @@ function setupAddBookModal() {
   });
 }
 
+
+
 // --- Init ---
 setupSidebar();
 setupLogout();

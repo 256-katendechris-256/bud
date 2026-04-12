@@ -1,0 +1,523 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Be Better BookClub | My Notes</title>
+  <link rel="icon" type="image/png" href="{% static 'img/bebetter.png' %}" />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{% static 'css/app.css' %}" />
+  <style>
+    /* Two-column layout specifically for Notes page */
+    .notes-layout {
+      display: flex;
+      gap: 20px;
+      height: calc(100vh - 100px);
+      margin-top: 24px;
+    }
+    
+    .notes-sidebar {
+      width: 280px;
+      background: var(--surface);
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    
+    .notes-sidebar-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--line);
+      font-weight: 700;
+      font-size: 1.05rem;
+    }
+    
+    .notes-book-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+    
+    .notes-book-item {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--line);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: background 0.2s;
+    }
+    .notes-book-item:hover {
+      background: var(--cream);
+    }
+    .notes-book-item.active {
+      background: var(--primary-light);
+      border-right: 3px solid var(--primary);
+    }
+    
+    .notes-book-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--ink);
+      white-space: normal;
+    }
+    
+    .notes-main {
+      flex: 1;
+      background: var(--surface);
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    
+    .notes-main-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .notes-main-header h2 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      margin: 0;
+    }
+    
+    .notes-feed {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    
+    .note-card {
+      background: var(--cream);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 16px 20px;
+      position: relative;
+    }
+    
+    .note-card-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 0.8rem;
+    }
+    
+    .note-card-page {
+      font-weight: 700;
+      color: var(--primary);
+      background: var(--primary-light);
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+    
+    .note-card-date {
+      color: var(--muted);
+      font-weight: 500;
+    }
+    
+    .note-card-text {
+      font-size: 0.95rem;
+      line-height: 1.6;
+      color: var(--ink);
+      white-space: pre-wrap;
+      /* Style to look like a highlighter, overridden via inline style */
+      padding: 2px 0;
+      display: inline;
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
+    }
+    
+    .note-card-delete {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 1rem;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s, color 0.2s;
+    }
+    
+    .note-card:hover .note-card-delete {
+      opacity: 1;
+    }
+    
+    .note-card-delete:hover {
+      color: var(--rose);
+    }
+    
+    .empty-notes {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--muted);
+      text-align: center;
+    }
+    .empty-notes-icon {
+      font-size: 3rem;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+    
+      .notes-filter-bar {
+        padding: 12px 24px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        gap: 12px;
+        background: var(--surface);
+      }
+      .notes-filter-btn {
+        background: transparent;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 6px 14px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--muted);
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .notes-filter-btn:hover {
+        color: var(--ink);
+        border-color: var(--muted);
+      }
+      .notes-filter-btn.active {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #fff;
+      }
+      
+      @media (max-width: 768px) {
+        .notes-layout {
+          flex-direction: column;
+          height: auto;
+        }
+        .notes-sidebar {
+          width: 100%;
+          max-height: 200px;
+        }
+        .notes-main {
+          min-height: 400px;
+        }
+        .notes-filter-bar {
+          padding: 12px 20px;
+          overflow-x: auto;
+        }
+        .notes-filter-btn {
+          white-space: nowrap;
+        }
+      }
+  </style>
+</head>
+<body>
+  <div class="noise"></div>
+
+  <div class="dash-layout">
+    <!-- Sidebar overlay (mobile) -->
+    <div class="dash-overlay" id="sidebar-overlay"></div>
+
+    <!-- Sidebar -->
+    <aside class="dash-sidebar" id="sidebar">
+      <div class="dash-sidebar-brand">
+        <div class="brand-mark">
+          <img src="{% static 'img/bebetter.png' %}" alt="Be Better BookClub" />
+        </div>
+        <h2>Be Better BookClub</h2>
+      </div>
+
+      <ul class="nav-menu">
+        <li class="nav-section-label">Menu</li>
+        <a class="nav-item" href="/dashboard/">
+          <span class="nav-icon">&#127968;</span> Home
+        </a>
+        <a class="nav-item" href="/books/">
+          <span class="nav-icon">&#128214;</span> My Books
+        </a>
+        <a class="nav-item active" href="/notes/">
+          <span class="nav-icon">&#128221;</span> My Notes
+        </a>
+        <a class="nav-item" href="#">
+          <span class="nav-icon">&#128101;</span> Clubs
+        </a>
+        <a class="nav-item" href="#">
+          <span class="nav-icon">&#127942;</span> Leaderboard
+        </a>
+
+        <li class="nav-section-label">Account</li>
+        <a class="nav-item" href="#">
+          <span class="nav-icon">&#9881;&#65039;</span> Settings
+        </a>
+      </ul>
+
+      <div class="nav-footer">
+        <button id="logout-sidebar" class="ghost" style="width:100%;" type="button">Log Out</button>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <div class="dash-main">
+      <!-- Header -->
+      <header class="dash-header">
+        <div class="dash-header-left">
+          <button class="dash-menu-toggle" id="menu-toggle" type="button" aria-label="Toggle menu">&#9776;</button>
+          <h1>My Notes</h1>
+        </div>
+        <div class="dash-header-right">
+          <button class="dash-user-dropdown" id="user-dropdown" type="button">
+            <span class="avatar avatar--sm" id="header-avatar">?</span>
+            <span id="header-username">Loading...</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Content -->
+      <div class="dash-content">
+        <div class="notes-layout">
+          <!-- Left Sidebar: Books -->
+          <div class="notes-sidebar">
+            <div class="notes-sidebar-header">Books with Notes</div>
+            <div class="notes-book-list" id="notes-book-list">
+              <div style="padding:20px; text-align:center; color:var(--muted); font-size:0.85rem;">Loading...</div>
+            </div>
+          </div>
+          
+          <!-- Right Main: Notes Feed -->
+          <div class="notes-main">
+            <div class="notes-main-header">
+              <h2 id="current-book-title">Select a book</h2>
+              <a href="#" id="read-book-link" style="display:none; font-size:0.85rem; font-weight:700; color:var(--primary); text-decoration:none;">Open Book &#8594;</a>
+            </div>
+            <div class="notes-filter-bar" id="notes-filter-bar" style="display:none;">
+               <button class="notes-filter-btn active" data-filter="all">All</button>
+               <button class="notes-filter-btn" data-filter="highlight">Highlights</button>
+               <button class="notes-filter-btn" data-filter="manual">Manual Notes</button>
+            </div>
+            <div class="notes-feed" id="notes-feed">
+              <div class="empty-notes">
+                <div class="empty-notes-icon">&#128214;</div>
+                <h3>No book selected</h3>
+                <p>Choose a book from the list to view its highlights.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="{% static 'js/dashboard.js' %}?v=2"></script>
+  <script>
+    // Notes Logic
+    document.addEventListener("DOMContentLoaded", async () => {
+      const bookListEl = document.getElementById("notes-book-list");
+      const notesFeedEl = document.getElementById("notes-feed");
+      const currentBookTitleEl = document.getElementById("current-book-title");
+      const readBookLink = document.getElementById("read-book-link");
+      
+      let allNotes = [];
+      let groupedNotes = {};
+      let activeBookId = null;
+      let currentFilter = "all";
+
+      const filterBtns = document.querySelectorAll('.notes-filter-btn');
+      filterBtns.forEach(btn => {
+         btn.addEventListener('click', () => {
+            filterBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilter = btn.dataset.filter;
+            if (activeBookId && groupedNotes[activeBookId]) {
+               renderNotesForBook(groupedNotes[activeBookId].notes);
+            }
+         });
+      });
+
+      function escapeHtml(str) {
+        const div = document.createElement("div");
+        div.textContent = str || "";
+        return div.innerHTML;
+      }
+      
+      const dateFormatter = new Intl.DateTimeFormat('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric',
+        hour: 'numeric', minute: 'numeric'
+      });
+
+      function hexToRgba(hex, alpha) {
+        if (!hex) hex = "#ffe244";
+        const h = hex.replace('#', '');
+        if (h.length === 6) {
+          const r = parseInt(h.substring(0,2), 16),
+                g = parseInt(h.substring(2,4), 16),
+                b = parseInt(h.substring(4,6), 16);
+          return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+        return `rgba(255, 226, 68, ${alpha})`;
+      }
+
+      async function fetchNotes() {
+        if (!state.access) {
+           window.location.href = "/";
+           return;
+        }
+        try {
+          const data = await request("/api/reading/notes/", {}, true);
+          allNotes = Array.isArray(data) ? data : (data.results || []);
+          
+          groupedNotes = {};
+          
+          allNotes.forEach(n => {
+            if (!groupedNotes[n.book]) {
+               groupedNotes[n.book] = {
+                 id: n.book,
+                 title: n.book_title,
+                 notes: []
+               };
+            }
+            groupedNotes[n.book].notes.push(n);
+          });
+          
+          // Sort chronologically descending by Date
+          Object.values(groupedNotes).forEach(bookObj => {
+             bookObj.notes.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+          });
+          
+          renderBookList();
+        } catch (err) {
+          console.error(err);
+          bookListEl.innerHTML = `<div style="padding:20px; color:var(--rose); text-align:center;">Failed to load notes</div>`;
+        }
+      }
+
+      function renderBookList() {
+        const books = Object.values(groupedNotes);
+        
+        if (books.length === 0) {
+           bookListEl.innerHTML = `<div style="padding:30px 20px; text-align:center; color:var(--muted); font-size:0.9rem;">
+             No highlights yet.<br><br>Read a book and select any text to create your first highlight!
+           </div>`;
+           return;
+        }
+        
+        books.sort((a,b) => a.title.localeCompare(b.title));
+        
+        bookListEl.innerHTML = books.map(b => `
+          <div class="notes-book-item ${b.id === activeBookId ? 'active' : ''}" data-id="${b.id}">
+            <div style="font-size:1.2rem;">&#128214;</div>
+            <div class="notes-book-title">${escapeHtml(b.title)}</div>
+          </div>
+        `).join("");
+        
+        bookListEl.querySelectorAll('.notes-book-item').forEach(el => {
+          el.addEventListener('click', () => {
+             selectBook(parseInt(el.dataset.id));
+          });
+        });
+        
+        if (!activeBookId && books.length > 0) {
+           selectBook(books[0].id);
+        } else if (activeBookId) {
+           selectBook(activeBookId);
+        }
+      }
+
+      function selectBook(id) {
+         activeBookId = id;
+         
+         const bookListItems = bookListEl.querySelectorAll('.notes-book-item');
+         bookListItems.forEach(el => el.classList.remove('active'));
+         const activeEl = bookListEl.querySelector(`.notes-book-item[data-id="${id}"]`);
+         if (activeEl) activeEl.classList.add('active');
+         
+         const bookInfo = groupedNotes[id];
+         if (!bookInfo) return;
+         
+         currentBookTitleEl.textContent = bookInfo.title;
+         readBookLink.href = `/books/${id}/read/`;
+         readBookLink.style.display = "inline-block";
+         document.getElementById('notes-filter-bar').style.display = "flex";
+         
+         renderNotesForBook(bookInfo.notes);
+      }
+
+      function renderNotesForBook(bookNotes) {
+         let notesToRender = bookNotes;
+         if (currentFilter === "highlight") {
+             notesToRender = bookNotes.filter(n => n.text && n.text.trim().length > 0);
+         } else if (currentFilter === "manual") {
+             notesToRender = bookNotes.filter(n => !n.text || n.text.trim().length === 0);
+         }
+
+         if (notesToRender.length === 0) {
+            let msg = "No notes in here.";
+            if (currentFilter === "highlight") msg = "No highlights found for this book.";
+            if (currentFilter === "manual") msg = "No manual notes found for this book.";
+            notesFeedEl.innerHTML = `<div class="empty-notes">${msg}</div>`;
+            return;
+         }
+         
+         notesFeedEl.innerHTML = notesToRender.map(n => {
+            const hColor = n.color || "#ffe244";
+            const commentHtml = n.comment ? `<div class="note-card-comment" style="margin-top:12px; padding-top:12px; border-top:1px dashed var(--line); font-size:0.9rem; color:var(--ink);">${escapeHtml(n.comment)}</div>` : '';
+            const textHtml = (n.text && n.text.trim().length > 0) ? `<div class="note-card-text" style="background: linear-gradient(104deg, transparent 0%, ${hexToRgba(hColor, 0.4)} 2%, ${hexToRgba(hColor, 0.5)} 98%, transparent 100%);">${escapeHtml(n.text)}</div>` : '';
+            return `
+            <div class="note-card">
+              <div class="note-card-meta">
+                <span class="note-card-page">Page ${n.page}</span>
+                <span class="note-card-date">${dateFormatter.format(new Date(n.created_at))}</span>
+              </div>
+              ${textHtml}
+              ${commentHtml}
+              <button class="note-card-delete" data-id="${n.id}" title="Remove note">&#10005;</button>
+            </div>
+            `;
+         }).join("");
+         
+         notesFeedEl.querySelectorAll('.note-card-delete').forEach(btn => {
+            btn.addEventListener('click', async function() {
+              const nid = parseInt(this.dataset.id);
+              if (!confirm("Are you sure you want to delete this note?")) return;
+              
+              this.parentElement.style.opacity = '0.5';
+              try {
+                await request(`/api/reading/notes/${nid}/`, { method: 'DELETE' }, true);
+                groupedNotes[activeBookId].notes = groupedNotes[activeBookId].notes.filter(x => x.id !== nid);
+                
+                if (groupedNotes[activeBookId].notes.length === 0) {
+                   delete groupedNotes[activeBookId];
+                   activeBookId = null;
+                   renderBookList();
+                   currentBookTitleEl.textContent = "Select a book";
+                   readBookLink.style.display = "none";
+                   document.getElementById('notes-filter-bar').style.display = "none";
+                   notesFeedEl.innerHTML = `<div class="empty-notes"><div class="empty-notes-icon">&#128214;</div><h3>Book complete</h3><p>All notes removed.</p></div>`;
+                } else {
+                   renderNotesForBook(groupedNotes[activeBookId].notes);
+                }
+              } catch (err) {
+                 this.parentElement.style.opacity = '1';
+                 alert("Failed to delete note.");
+              }
+            });
+         });
+      }
+
+      fetchNotes();
+    });
+  </script>
+</body>
+</html>

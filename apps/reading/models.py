@@ -63,3 +63,28 @@ class ReadingSession(models.Model):
 
     def __str__(self):
         return f"{self.user} read {self.pages_read}pg of {self.book.title}"
+
+
+class Note(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='notes',
+    )
+    book = models.ForeignKey(
+        'books.Book',
+        on_delete=models.CASCADE,
+        related_name='notes',
+    )
+    page = models.PositiveIntegerField()
+    text = models.TextField(blank=True, null=True)
+    highlight_rects = models.JSONField(null=True, blank=True)
+    color = models.CharField(max_length=20, default="#ffe244")
+    comment = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user} - pg.{self.page} - {self.book.title}"

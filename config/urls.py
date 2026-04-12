@@ -2,7 +2,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
-from config.views import app_shell, dashboard, login_page, signup_page, books_page, books_reader_page
+from config.views import app_shell, dashboard, login_page, signup_page, books_page, books_reader_page, notes_page
 from config.views import debug_db
 
 urlpatterns = [
@@ -13,6 +13,7 @@ urlpatterns = [
     path('dashboard/', dashboard, name='dashboard'),
     path('books/', books_page, name='books-page'),
     path('books/<int:book_id>/read/', books_reader_page, name='books-reader'),
+    path('notes/', notes_page, name='notes-page'),
     path('api/auth/', include('apps.accounts.urls')),
     path('api/', include('apps.books.urls')),
     path('api/reading/', include('apps.reading.urls')),

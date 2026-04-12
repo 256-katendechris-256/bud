@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from apps.books.serializers import BookListSerializer
 
-from .models import UserBook, ReadingSession
+from .models import UserBook, ReadingSession, Note
 
 
 class UserBookSerializer(serializers.ModelSerializer):
@@ -51,3 +51,12 @@ class ReadingStatsSerializer(serializers.Serializer):
     current_streak = serializers.IntegerField()
     books_finished = serializers.IntegerField()
     total_time_hours = serializers.FloatField()
+
+
+class NoteSerializer(serializers.ModelSerializer):
+    book_title = serializers.CharField(source='book.title', read_only=True)
+
+    class Meta:
+        model = Note
+        fields = ('id', 'book', 'book_title', 'page', 'text', 'highlight_rects', 'color', 'comment', 'created_at')
+        read_only_fields = ('id', 'created_at')
